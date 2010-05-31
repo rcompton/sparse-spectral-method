@@ -45,13 +45,19 @@ Psi0 = exp(-(5*(r-0*Lnot/128)).^2);
 figure()
 plot(r,Psi0)
 
+Nt = 3000;
+
 psit = adv_one_step(r, Psi0, V, dt, M, Lnot);
 
-for nt=1:3000
+for nt=2:3000
     psit = adv_one_step(r, psit, V, dt, M, Lnot);
+    
+    if mod(nt,500) == 0
+        hold on
+        plot(r,psit)
+    end
 end
 
 
-hold on
-plot(r,psit,'r')
+
 
