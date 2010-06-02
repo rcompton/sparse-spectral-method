@@ -2,45 +2,43 @@
 % In this example we know that the frequency space data
 % is sparse and we get it from sparse physical space data
 % using FPC_AS
+% without making an explicit sample matrix R
 %
 clear all;
 close all;
 clc;
 
-n = 2^11;
-sparsity = 0.075*n;
-num_samples = round(n/3.7321);
+n = 2^10.42;
+sparsity = 0.0612*n;
+num_samples = round(n/3.8121);
 
 %seed the random generator with the example seeder
 stream = RandStream('mrg32k3a');
 
-%sparse freqs
+%create the sparse freqs that we want to reconstruct
 uHat_exact = zeros(n,1);
 target_points = randsample(stream,1:n,sparsity);
 uHat_exact(target_points) = randn(stream,sparsity,1)*10;
 
+
 %full time data (never used)
-u = ifft(uHat_exact);
+u = sqrt(n)*ifft(uHat_exact);
 
 %make our downsampling matrix
-
 sample_points = randsample(stream,1:n, num_samples);
-R = zeros(num_samples, n);
-for i=1:num_samples
-    R(i,sample_points(i)) = 1;
-end
 
 %% reconstruct from sparse data
 
 % FPC_AS A_operator class
-A = A_operator( @(z) (sqrt(n))*R*ifft(z), @(z) (1/sqrt(n))*fft(R'*z));
+A = A_operator( @(z) pifft(z,sample_points), @(z) pfft(z,sample_points,n) );
 
 % tiny mu corresponds to heavy weight on the fidelity term
 mu = 1e-10;
-u_samples = A*uHat_exact; %apply the first operator in A_operator.
 
-%u_tester = sqrt(n)*R*ifft(uHat_exact);
-%norm(u_tester - u_samples)
+%downsample.
+%u_samples are what we measure from the expensive machine
+%we simulate measured data with the following line:
+u_samples = u(sample_points); %apply the first operator in A_operator.
 
 % Call Wotao's code.
 [uHat_approx, Out] = FPC_AS(n,A,u_samples,mu);
