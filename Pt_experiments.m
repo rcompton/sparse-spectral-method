@@ -10,18 +10,23 @@
 %clc;
 
 n = NPt;
-num_samples = round(n/5.8121);
+num_samples = round(n/4.8121);
+num_sparsity = .05*n;
+
+assert(any(size(Po)==NPt));
 
 %seed the random generator with the example seeder
 stream = RandStream('mrg32k3a');
 
 %% Draw the energy spectrum with classical FFT methods
-Pe_old = ifft(((1-cos(2*pi*t/T)).*Po)); %Hanning windows...
-Peww_old =  ifft(Po); %no windowing in compressed sensing?
+%Pe_old = fft(((1-cos(2*pi*t'/T)).*Po))/sqrt(n); %Hanning windows...
+%Peww_old =  fft(Po)/sqrt(n); %no windowing in compressed sensing?
 
-%uHat_exact = zeros(n,1);
-%target_points = randsample(stream,1:n,sparsity);
-%uHat_exact(target_points) = randn(stream,sparsity,1)*10;
+uHat_exact = zeros(n,1);
+target_points = randsample(stream,1:n,num_sparsity);
+uHat_exact(target_points) = randn(stream,num_sparsity,1)*10;
+
+uHat_exact = fft(Po')/sqrt(n);
 
 %full time data (never used)
 %u = sqrt(n)*ifft(uHat_exact);
@@ -40,21 +45,37 @@ mu = 1e-10;
 %downsample.
 %u_samples are what we measure from the expensive machine
 %we simulate measured data with the following line:
-u_samples = Po(sample_points)'; %apply the first operator in A_operator.
+%u_samples = Po(sample_points)'; %apply the first operator in A_operator.
+u = ifft(uHat_exact)*sqrt(n);
+
+u_samples = u(sample_points);
+%Po = Po';
+%u_samples = Po(sample_points)';
+
+%fprintf('u-Po %f\n',norm(u - Po));
+
+
 
 % Call Wotao's code.
-[Pe_new, Out] = FPC_AS(n,A,u_samples,mu);
+%[Pe_new, Out] = FPC_AS(n, A, u_samples, mu);
+[uHat_approx, Out] = FPC_AS(n, A, u_samples, mu);
 
-Pe_new = Pe_new';
+%Pe_new = Pe_new';
 
 %%
-close all;
-figure(1);
-title('old Blue, new red');
-plot(1:n, abs(Peww_old*sqrt(NPt)),'b');
-hold on;
-plot(1:n, abs(Pe_new),'r--');
+%close all;
+%figure(1);
+%title('old Blue, new red');
+%plot(1:n, abs(Peww_old*sqrt(NPt)),'b');
+%hold on;
+%plot(1:n, abs(Pe_new),'r--');
 %hold on;
 %plot(1:n, abs(Pe_old*sqrt(NPt)),'g');
 
-fprintf('L2 error in approx: %f \n', norm( abs(Pe_old*sqrt(NPt)) - abs(Pe_new),2)/norm(Pe_old*sqrt(NPt)) );
+%fprintf('L2 error in approx: %f \n', norm( abs(Pe_old*sqrt(NPt)) - abs(Pe_new),2)/norm(Pe_old*sqrt(NPt)) );
+
+plot(1:NPt, real(uHat_approx),'gx')
+hold on
+plot(1:NPt, real(uHat_exact))
+
+norm(uHat_approx - uHat_exact)
