@@ -10,7 +10,7 @@ close all;
 clc;
 
 n = NPt;
-num_samples = round(n/4.8121);
+num_samples = round(n/17.8121);
 num_sparsity = .05*n;
 
 assert(any(size(Po)==NPt));
@@ -30,7 +30,10 @@ if ~all(size(Po) == [NPt 1])
     Po = Po';
 end
 assert(all(size(Po) == [NPt 1]));
-    
+
+%window Po
+Po = (1-cos(2*pi*t'/T)).*Po;
+
 %uHat_exact = zeros(n,1);
 %target_points = randsample(stream,1:n,num_sparsity);
 %uHat_exact(target_points) = randn(stream,num_sparsity,1)*10;
@@ -82,11 +85,10 @@ u_samples = Po(sample_points);
 %plot(1:n, abs(Pe_new),'r--');
 %hold on;
 %plot(1:n, abs(Pe_old*sqrt(NPt)),'g');
-
 %fprintf('L2 error in approx: %f \n', norm( abs(Pe_old*sqrt(NPt)) - abs(Pe_new),2)/norm(Pe_old*sqrt(NPt)) );
 
-plot(1:NPt, real(uHat_approx),'gx')
-hold on
 plot(1:NPt, real(uHat_exact))
+hold on
+plot(1:NPt, real(uHat_approx),'r--')
 
 norm(uHat_approx - uHat_exact)
