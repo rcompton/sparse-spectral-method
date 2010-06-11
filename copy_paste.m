@@ -1,26 +1,56 @@
-%% Finite Square Well: Split-Operator Method
+%% Split-Operator Method
 %% Ref: M. D. Feit, J. A. Fleck, Jr., and A. Steiger, 
 %%      "Solution of the Schrodinger Equation by a Spectral Method",
 %%      Journal of Computational Physics 47, 412-433 (1982).
-%% Ref: D. J. Griffiths, 
-%%      "Introduction to Quantum Mechanics",
-%%      ISBN 0-13-124405-1
+
+
+
 %% 
-clear all; close all;clc;
-a = 48;  %% Length
-M = 1/2; %% Mass
-N = 512;
-x = linspace(-a/2,a/2,N); x = x'; %work with many rows and 1 column.
-k = N*linspace(-1/2,1/2,N); k = k';
-dt = 1e-3; %% Time step (dt < pi/(3*dVmax)...)
+clear all;close all;clc;
+
+% Define spatial grid vairables
+dx = 0.825
+Nx = 512
+L0 = dx*Nx
+xmax = L0/2
+xmin = -L0/2
+x = linspace(xmin,xmax,Nx);
+
+% Define potential
+% For some weird physics reason it's mostly zeros...
+k0 = -132.7074997;
+k2 = 7;
+k3 = 0.5;
+k4 = 1;
+x1 = 3.813;
+x2 = -4.112;
+V = (k0 - k2*x.^2 + k3*x.^3 + k4*x.^4).*(x<x1).*(x2<x);
+
+% Define uniform time domain
+% WTF?!
+dt = 5.73 %% Time step (dt < pi/(3*dVmax)...)
+Nt = 16384
+
+% Define initial wavefunction
+a = 1.9; % shift
+sigmah = 0.87; % spread
+psi0 = exp(-((x-a).^2)/(2*sigmah^2)) + exp(-((x+a).^2)/(2*sigmah^2));
+psi0c = conj(psi0); % real(psi0)- i*imag(psi0);
+
+% Mass
+M = 1/2
+
+% Define spectral vairables
+k = Nx*linspace(-1/2,1/2,Nx);
+
 %%-------------------------------------------------------------------------
 %%
 %%% Potential
-V0 = 200;
-V = zeros(length(x),1) - V0; % 1*((2*x).^2 - (0.6*a)^2);  %  
-b = a/16;
-V(x<-b) = 0;
-V(x>+b) = 0;
+%V0 = 20000;
+%V = zeros(length(x),1) - V0; % 1*((2*x).^2 - (0.6*a)^2);  %  
+%b = a/16;
+%V(x<-b) = 0;
+%V(x>+b) = 0;
 % V(1:5) = V(1:5)-i*1e3;  %% Absorption at simulation boundary
 % V(end-5:end) = V(end-5:end)-i*1e3;  %% Absorption at simulation boundary
 %%%
@@ -28,7 +58,7 @@ V(x>+b) = 0;
 %%
 %%% initial wave packet
 %% Gaussian
-Phi0 = exp(-(5*(x-0*a/128)).^2); 
+%Phi0 = exp(-(5*(x-0*a/128)).^2); 
 %
 %% Odd
 % mode = 3;
@@ -44,23 +74,32 @@ Phi0 = exp(-(5*(x-0*a/128)).^2);
 %%
 %%-------------------------------------------------------------------------
 %%
-Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
 %%
-figure(1);set(gcf,'position',[37 208 538 732]);
-title('Potential');
-plot(x,V,'r');hold on;plot(x,max(abs(real(V)))*abs(Phi0c));hold off; pause(1);
-%%
-%the method in it's pure form applys GK 2x
-%but thats' the same and GK2 once in a loop...
-GK = fftshift(exp(-(1i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
-GK2 = fftshift(exp(-(1i*dt/(2*M))*((2*pi/a)^2)*(k.^2))); %% dt kinetic energy propagator
+%figure(1);set(gcf,'position',[37 208 538 732]);
+%title('Potential');
+%plot(x,V,'r');hold on;plot(x,max(abs(real(V)))*abs(Phi0c));hold off; pause(1);
+%% Define the spectral operators.
+% the method in it's pure form applys GK twice
+% but thats' the same as an offset and GK2 once in a loop...
+% why do we shift?
+% I don't know.
+
+GK = fftshift(exp(-(1i*dt/(4*M))*((2*pi/L0)^2)*(k.^2))); %% dt/2 kinetic energy propagator
+
+%GK = exp(-(1i*dt/(4*M))*((2*pi/a)^2)*(k.^2)); %% dt/2 kinetic energy propagator
+%GK2 = exp(-(1i*dt/(2*M))*((2*pi/a)^2)*(k.^2)); %% dt kinetic energy propagator
+
 GV = exp(-1i*dt*V); %% Potential spatial interaction
+
 % plot((-(dt/(4*M))*((2*pi/a)^2)*(k.^2)));
 % plot(-dt*V);
 %%
-iPhi = fft(Phi0);
-Phi = ifft(iPhi.*GK); %propagate dt/2 to get in line with future loop iters...
-Phi = GV.*Phi;
+
+
+%% The major computational loop
+ipsi = fft(psi0);
+psi = ifft(ipsi.*GK); %propagate dt/2 to get in line with future loop iters...
+psi = GV.*psi;
 NPt = 50000; %How did you pick? dEmin < pi/T is minimum seperation that can resolve.
 Pt = zeros(1,NPt);
 En = -105.99;  %% Energy eigenvalue. what the hell? how???
@@ -71,7 +110,7 @@ t = linspace(0,T,NPt);
 
 %
 % Propagate all the timesteps
-% (lots of computational work...)
+% ***One timestep per iteration!***
 %
 for nrn = 1:NPt
     %note, Phi was already propagated dt/2 before the loop.

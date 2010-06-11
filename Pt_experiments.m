@@ -87,8 +87,16 @@ u_samples = Po(sample_points);
 %plot(1:n, abs(Pe_old*sqrt(NPt)),'g');
 %fprintf('L2 error in approx: %f \n', norm( abs(Pe_old*sqrt(NPt)) - abs(Pe_new),2)/norm(Pe_old*sqrt(NPt)) );
 
+figure(1)
+title('real parts')
 plot(1:NPt, real(uHat_exact))
 hold on
 plot(1:NPt, real(uHat_approx),'r--')
 
-norm(uHat_approx - uHat_exact)
+figure(2)
+title('imag parts')
+plot(1:NPt, imag(uHat_exact))
+hold on
+plot(1:NPt, imag(uHat_approx),'r--')
+
+fprintf('L2 unnormalized error %f \n', norm(uHat_approx - uHat_exact));
