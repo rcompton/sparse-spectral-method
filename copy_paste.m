@@ -9,7 +9,7 @@
 clear all;close all;clc;
 
 % Define spatial grid vairables
-dx = 0.825
+dx = 0.0825
 Nx = 512
 L0 = dx*Nx
 xmax = L0/2
