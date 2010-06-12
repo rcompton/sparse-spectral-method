@@ -60,10 +60,14 @@ Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
 %%
 %figure(1);set(gcf,'position',[37 208 538 732]);
 %plot(x,V,'r');hold on;plot(x,max(abs(real(V)))*abs(Phi0c));hold off; pause(1);
-%%
-GK = fftshift(exp(-(i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
-%GK2 = fftshift(exp(-(i*dt/(2*M))*((2*pi/a)^2)*(k.^2))); %% dt kinetic energy propagator
-GV = exp(-i*dt*V); %% Potential spatial interaction
+
+%% Make the propagators
+%Note to self, the sprintf trick works to get scalars in scope
+%but what about a vector?
+%also note, GK as a function makes everything take forever!
+GK = inline(sprintf('fftshift(exp(-(i*dt/(4*%f))*((2*pi/%f)^2)*(k.^2)))',M,a)','dt','k'); %% dt/2 kinetic energy propagator
+GV = exp(-1i*dt*V); %% Potential spatial interaction
+
 % plot((-(dt/(4*M))*((2*pi/a)^2)*(k.^2)));
 % plot(-dt*V);
 %%
@@ -82,13 +86,13 @@ Phi = Phi0;
 iPhi = fft(Phi);
 for nrn = 1:NPt
     % momentum space propagation
-    iPhi = iPhi.*GK;
+    iPhi = iPhi.*GK(dt,k);
     % move into physical space and apply potential operator
     Phi = ifft(iPhi);
     Phi = GV.*Phi;
     % move into momentum space and propagate again
     iPhi = fft(Phi);
-    iPhi = iPhi.*GK;
+    iPhi = iPhi.*GK(dt,k);
     
     % move back into physical space and record P(t)
     Phi = ifft(iPhi);
@@ -98,6 +102,7 @@ for nrn = 1:NPt
 end
 
 
+% His stupid way is still 3 ffts per loop
 % iPhi = fft(Phi0);
 % Phi = ifft(iPhi.*GK);
 % Phi = GV.*Phi;
