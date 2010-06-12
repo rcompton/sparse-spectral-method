@@ -7,29 +7,29 @@
 %%      ISBN 0-13-124405-1
 %% 
 clear all; close all; clc;
-a = 48;  %% Length
-M = 1/2; %% Mass
-N = 512;
-x = linspace(-a/2,a/2,N); x = x';
-k = N*linspace(-1/2,1/2,N); k = k';
-dt = 1e-3 %% Time step
-NPt = 50000
-%%-------------------------------------------------------------------------
-%%
-%%% Potential
+
+a = 48;  % space size
+M = 1/2; % particle mass
+N = 512; % number of space points
+x = linspace(-a/2,a/2,N); x = x'; % work with columns
+k = N*linspace(-1/2,1/2,N); k = k'; % frequency vairables
+NPt = 50000 % number of time steps
+dt = 1e-3 % smallest possible time step
+Pt = zeros(1,NPt); % autocorrlelation function
+T = dt*NPt % max time
+t = linspace(0,T,NPt); %high resolution timescale
+wt = (1-cos(2*pi*t/length(t))); %window of the high res scale
+
+%% randomized timestepping
+p = 1
+num_time_samples = NPt*p;
+t_samp = sort(randsample(t, num_time_samples));
+dts = [t_samp 0] - [0 t_samp];
+dts = dts(1:num_time_samples-1); %careful here...
+
+%% Potential
 V0 = 200;
 V = zeros(length(x),1) - V0; % 1*((2*x).^2 - (0.6*a)^2);% iPhi = fft(Phi0);
-% Phi = ifft(iPhi.*GK);
-% Phi = GV.*Phi;
-% for nrn = 1:NPt
-%     iPhi = fft(Phi);    
-%     Pt(nrn) = trapz(x,Phi0c.*ifft(iPhi.*GK));
-%     Phi = ifft(iPhi.*GK2);
-%     Phi = GV.*Phi;    
-% end
-% iPhi = fft(Phi);
-% Phi = ifft(iPhi.*GK);
-  %  
 b = a/16;
 V(x<-b) = 0;
 V(x>+b) = 0;
@@ -71,49 +71,25 @@ GV = exp(-1i*dt*V); %% Potential spatial interaction
 % plot((-(dt/(4*M))*((2*pi/a)^2)*(k.^2)));
 % plot(-dt*V);
 %%
-Pt = zeros(1,NPt);
-T = dt*NPt
-t = linspace(0,T,NPt);
-wt = (1-cos(2*pi*t/length(t)));
-uns = 0;
 
-
-%
 % Propagate all the timesteps
 % ***One timestep per iteration!***
-%
 Phi = Phi0;
 iPhi = fft(Phi);
 for nrn = 1:NPt
     % momentum space propagation
-    iPhi = iPhi.*GK(dt,k);
+    iPhi = iPhi.*GK(dts(nrn),k);
     % move into physical space and apply potential operator
     Phi = ifft(iPhi);
     Phi = GV.*Phi;
     % move into momentum space and propagate again
     iPhi = fft(Phi);
-    iPhi = iPhi.*GK(dt,k);
-    
+    iPhi = iPhi.*GK(dts(nrn),k);
     % move back into physical space and record P(t)
     Phi = ifft(iPhi);
     Pt(nrn) = trapz(x, Phi0c.*Phi);
-    
-    
 end
 
-
-% His stupid way is still 3 ffts per loop
-% iPhi = fft(Phi0);
-% Phi = ifft(iPhi.*GK);
-% Phi = GV.*Phi;
-% for nrn = 1:NPt
-%     iPhi = fft(Phi);    
-%     Pt(nrn) = trapz(x,Phi0c.*ifft(iPhi.*GK));
-%     Phi = ifft(iPhi.*GK2);
-%     Phi = GV.*Phi;    
-% end
-% iPhi = fft(Phi);
-% Phi = ifft(iPhi.*GK);
 
 %%
 estep = 1;  %% Sampling period
