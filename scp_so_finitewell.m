@@ -12,20 +12,34 @@ a = 48;  % space size
 M = 1/2; % particle mass
 N = 512; % number of space points
 x = linspace(-a/2,a/2,N); x = x'; % work with columns
-k = N*linspace(-1/2,1/2,N); k = k'; % frequency vairables
-NPt = 50000 % number of time steps
-dt = 1e-3 % smallest possible time step
-Pt = zeros(1,NPt); % autocorrlelation function
-T = dt*NPt % max time
-t = linspace(0,T,NPt); %high resolution timescale
+k = N*linspace(-1/2,1/2,N); k = k'; % space frequency variables
+
+% weird timescale stuff
+p = .2 % prob of taking a point in the grid
+
+dt_small = p*1e-3 % fine grid time step
+NPt = floor((1/p)*50000) % number of time steps on the fine grid
+
+% Determined from above specs
+T = dt_small*NPt % max time (for high resoultion deltaE)
+t = linspace(0,T,NPt); % high resolution timescale
+dt_small = t(45) - t(44); % err derr slight adjustment for making off by 1
+Pt = zeros(1,NPt); % autocorrlelation function has lots of zeros
 wt = (1-cos(2*pi*t/length(t))); %window of the high res scale
 
-%% randomized timestepping
-p = 1
-num_time_samples = NPt*p;
-t_samp = sort(randsample(t, num_time_samples));
+% Determine the upper bound of our timesteps
+skips = 10;
+dt_big = skips*dt_small;
+t_big_idxs = 1:skips:NPt;
+
+% randomized timestepping
+num_random_time_samples = round(NPt*p);
+t_random_idxs = sort(randsample(1:NPt, num_random_time_samples));
+t_idxs = unique(sort([t_random_idxs t_big_idxs]));
+t_samp = [t(t_idxs) t(NPt)];
+num_total_time_samples = max(size(t_samp))
 dts = [t_samp 0] - [0 t_samp];
-dts = dts(1:num_time_samples-1); %careful here...
+dts = dts(2:max(size(dts))-1);
 
 %% Potential
 V0 = 200;
@@ -35,11 +49,8 @@ V(x<-b) = 0;
 V(x>+b) = 0;
 % V(1:5) = V(1:5)-i*1e3;  %% Absorption at simulation boundary
 % V(end-5:end) = V(end-5:end)-i*1e3;  %% Absorption at simulation boundary
-%%%
-%%-------------------------------------------------------------------------
-%%
-%%% initial wave packet
-%% Gaussian
+
+%% initial wave packet
 Phi0 = exp(-(5*(x-0*a/128)).^2); 
 %
 %% Odd
@@ -53,11 +64,6 @@ Phi0 = exp(-(5*(x-0*a/128)).^2);
 % Phi0 = sqrt(2/b)*cos(mode*pi*x/b);
 % Phi0(x<-b) = 0;
 % Phi0(x>+b) = 0;
-%%
-%%-------------------------------------------------------------------------
-%%
-Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
-%%
 %figure(1);set(gcf,'position',[37 208 538 732]);
 %plot(x,V,'r');hold on;plot(x,max(abs(real(V)))*abs(Phi0c));hold off; pause(1);
 
@@ -66,41 +72,38 @@ Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
 %but what about a vector?
 %also note, GK as a function makes everything take forever!
 GK = inline(sprintf('fftshift(exp(-(i*dt/(4*%f))*((2*pi/%f)^2)*(k.^2)))',M,a)','dt','k'); %% dt/2 kinetic energy propagator
-GV = exp(-1i*dt*V); %% Potential spatial interaction
+GV = inline(sprintf('exp(-1i*dt*V)'),'dt','V'); %% Potential spatial interaction
 
 % plot((-(dt/(4*M))*((2*pi/a)^2)*(k.^2)));
 % plot(-dt*V);
-%%
 
-% Propagate all the timesteps
+%% Propagate all the timesteps
 % ***One timestep per iteration!***
+Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
 Phi = Phi0;
 iPhi = fft(Phi);
-for nrn = 1:NPt
+for nrn = 1:max(size(dts))
     % momentum space propagation
     iPhi = iPhi.*GK(dts(nrn),k);
     % move into physical space and apply potential operator
     Phi = ifft(iPhi);
-    Phi = GV.*Phi;
+    Phi = GV(dts(nrn),V).*Phi;
     % move into momentum space and propagate again
     iPhi = fft(Phi);
     iPhi = iPhi.*GK(dts(nrn),k);
-    % move back into physical space and record P(t)
+    % move back into physical space and record P(t) at the sample point
     Phi = ifft(iPhi);
-    Pt(nrn) = trapz(x, Phi0c.*Phi);
+    Pt(t_idxs(nrn)) = trapz(x, Phi0c.*Phi);
 end
-
 
 %%
 estep = 1;  %% Sampling period
 Po = Pt(1:estep:length(Pt));
-T = dt*NPt;
-t = linspace(0,T,length(Po));
-E = (1/dt)*(linspace(-pi,pi,length(Po)));
-Po = (1-cos(2*pi*t/T)).*Po;
+E = (1/dt_small)*(linspace(-pi,pi,length(Po)));
+Po = wt.*Po;
 %% Two ways...
 %Pe = fft(Po);
-Pe = fft_via_fpca(Po, randsample(1:NPt, NPt/3));
+Pe = fft_via_fpca(Po, t_idxs);
 
 Pe = fftshift(Pe)/T;
 %%
@@ -130,16 +133,16 @@ g =  inline('tan(z) - sqrt((z0/z).^2 - 1)','z','z0');
 for nrn = 1:14
 zn(nrn) = fzero(@(z) g(z,z0),crss_n(nrn));
 end
-figure(3);subplot(2,1,1);hold on;plot(zn,tan(zn),'rx');
-q = zn/b;
-Em = ((q.^2)/(2*M))-V0;
+% figure(3);subplot(2,1,1);hold on;plot(zn,tan(zn),'rx');
+% q = zn/b;
+% Em = ((q.^2)/(2*M))-V0;
+% %%
+ for nrn = 1:length(Em),
+     figure(3);hold on; 
+     plot([Em(nrn),Em(nrn)],[-17,6]); 
+ end
 %%
-for nrn = 1:length(Em),
-    figure(3);subplot(2,1,2);hold on; 
-    plot([Em(nrn),Em(nrn)],[-17,6]); 
-end
-%%
-figure(3);subplot(2,1,2);
+figure(3)
 plot(E,log(fliplr(abs(Pe))),'r');hold on;
 title('Energy Spectrum (Blue: Even solutions)');
 xlabel('Energy');ylabel('Power');

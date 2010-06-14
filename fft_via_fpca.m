@@ -1,6 +1,8 @@
 function Pe = fft_via_fpca(Po, sample_idxs)
 %
 % Do an fft using FPCA
+% The input data is large and sparse
+% (ie include the 0s)
 %
 n = max(size(Po));
 if ~all(size(Po) == [n 1])
