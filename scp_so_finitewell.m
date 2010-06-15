@@ -1,11 +1,11 @@
 %% Finite Square Well: Split-Operator Method
-%% Ref: M. D. Feit, J. A. Fleck, Jr., and A. Steiger, 
+%% Ref: M. D. Feit, J. A. Fleck, Jr., and A. Steiger,
 %%      "Solution of the Schrodinger Equation by a Spectral Method",
 %%      Journal of Computational Physics 47, 412-433 (1982).
-%% Ref: D. J. Griffiths, 
+%% Ref: D. J. Griffiths,
 %%      "Introduction to Quantum Mechanics",
 %%      ISBN 0-13-124405-1
-%% 
+%%
 clear all; close all; clc;
 
 a = 48;  % space size
@@ -15,7 +15,7 @@ x = linspace(-a/2,a/2,N); x = x'; % work with columns
 k = N*linspace(-1/2,1/2,N); k = k'; % space frequency variables
 
 % weird timescale stuff
-p = .2 % prob of taking a point in the grid
+p = 1 % prob of taking a point in the grid
 
 dt_small = p*1e-3 % fine grid time step
 NPt = floor((1/p)*50000) % number of time steps on the fine grid
@@ -51,7 +51,7 @@ V(x>+b) = 0;
 % V(end-5:end) = V(end-5:end)-i*1e3;  %% Absorption at simulation boundary
 
 %% initial wave packet
-Phi0 = exp(-(5*(x-0*a/128)).^2); 
+Phi0 = exp(-(5*(x-0*a/128)).^2);
 %
 %% Odd
 % mode = 3;
@@ -82,6 +82,8 @@ GV = inline(sprintf('exp(-1i*dt*V)'),'dt','V'); %% Potential spatial interaction
 Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
 Phi = Phi0;
 iPhi = fft(Phi);
+fprintf('we are going to make %d timesteps now:', max(size(dts)));
+tic
 for nrn = 1:max(size(dts))
     % momentum space propagation
     iPhi = iPhi.*GK(dts(nrn),k);
@@ -95,17 +97,28 @@ for nrn = 1:max(size(dts))
     Phi = ifft(iPhi);
     Pt(t_idxs(nrn)) = trapz(x, Phi0c.*Phi);
 end
-
+toc
 %%
 estep = 1;  %% Sampling period
 Po = Pt(1:estep:length(Pt));
-E = (1/dt_small)*(linspace(-pi,pi,length(Po)));
-Po = wt.*Po;
+E = (1/dt_small)*(linspace(-pi,pi,length(Pt)));
+Po = (1-cos(2*pi*t/T)).*Po;
 %% Two ways...
+% This way works for sure...
 %Pe = fft(Po);
-Pe = fft_via_fpca(Po, t_idxs);
+%Pe = fftshift(Pe)/T;
 
-Pe = fftshift(Pe)/T;
+practice_points = sort(randsample(1:NPt, NPt/3));
+Pder = zeros(1,NPt);
+Pder(practice_points) = Po(practice_points);
+
+% FPC_AS A_operator class
+A = A_operator( @(z) pifft(z, find(Pder)), @(z) pfft(z, find(Pder), NPt) );
+mu = 1e-10;
+[Pe, ~] = FPC_AS(NPt, A, nonzeros(Pder), mu);
+%norm(uHat' - uHatder*sqrt(N))
+Pe = Pe'*sqrt(NPt);
+Pe = fftshift(Pe);
 %%
 
 % figure(2);subplot(2,1,1);plot(t,real(Po));
@@ -127,20 +140,21 @@ y2 = sqrt((z0./z).^2 - 1);
 %plot(z,0*z,'r');
 %axis([0 45 0 35]);
 %title('tan(z)  =  [(z_0/z)^2 - 1]^{1/2}');
-crss_n = [1.5 4.5 7.6 10.8 13.83 16.9 20.0 23.0 26.1 29.1 32.2 35.2 38.2 41.1]; 
+crss_n = [1.5 4.5 7.6 10.8 13.83 16.9 20.0 23.0 26.1 29.1 32.2 35.2 38.2 41.1];
 %% ^-- get these values by looking at the graph (approx)
 g =  inline('tan(z) - sqrt((z0/z).^2 - 1)','z','z0');
 for nrn = 1:14
-zn(nrn) = fzero(@(z) g(z,z0),crss_n(nrn));
+    zn(nrn) = fzero(@(z) g(z,z0),crss_n(nrn));
 end
 % figure(3);subplot(2,1,1);hold on;plot(zn,tan(zn),'rx');
-% q = zn/b;
-% Em = ((q.^2)/(2*M))-V0;
-% %%
- for nrn = 1:length(Em),
-     figure(3);hold on; 
-     plot([Em(nrn),Em(nrn)],[-17,6]); 
- end
+q = zn/b;
+Em = ((q.^2)/(2*M))-V0;
+
+for nrn = 1:length(Em)
+    figure(3);
+    hold on;
+    plot([Em(nrn),Em(nrn)],[-17,6]);
+end
 %%
 figure(3)
 plot(E,log(fliplr(abs(Pe))),'r');hold on;
