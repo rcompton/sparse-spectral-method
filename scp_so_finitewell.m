@@ -117,7 +117,16 @@ A = A_operator( @(z) pifft(z, find(Pder)), @(z) pfft(z, find(Pder), NPt) );
 mu = 1e-10;
 [Pe, ~] = FPC_AS(NPt, A, nonzeros(Pder), mu);
 %norm(uHat' - uHatder*sqrt(N))
-Pe = Pe'*sqrt(NPt);
+
+%Hack to get the scale right,
+%Fourier transform is an isometry of L2
+%Pe = Pe/norm(Pe,2);
+%Pe = Pe*norm(Pt);
+
+%Hurr durr scale by T
+Pe = Pe*sqrt(T);
+
+%This...
 Pe = fftshift(Pe);
 %%
 
