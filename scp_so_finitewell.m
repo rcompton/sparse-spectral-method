@@ -123,8 +123,9 @@ mu = 1e-10;
 %Pe = Pe/norm(Pe,2);
 %Pe = Pe*norm(Pt);
 
-%Hurr durr scale by T
-Pe = Pe*sqrt(T);
+
+% Hurr durr scale by T
+Pe = Pe*sqrt(NPt)/T;
 
 %This...
 Pe = fftshift(Pe);
