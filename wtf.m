@@ -2,7 +2,7 @@
 %what the hell I swear this was working!
 
 N = 4258;
-uHat = randn(1,N);
+uHat = randn(1,N) + 1i*randn(1,N);
 zs = randsample(1:N,.90*N);
 uHat(zs) = zeros(size(zs));
 
