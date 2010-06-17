@@ -17,7 +17,7 @@ k = N*linspace(-1/2,1/2,N); k = k'; % space frequency variables
 % weird timescale stuff
 p = 1 % prob of taking a point in the grid
 
-dt_small = p*1e-3 % fine grid time step
+dt_small = p*7e-3 % fine grid time step
 NPt = floor((1/p)*50000) % number of time steps on the fine grid
 
 % Determined from above specs
@@ -108,7 +108,7 @@ Po = (1-cos(2*pi*t/T)).*Po;
 %Pe = fft(Po);
 %Pe = fftshift(Pe)/T;
 
-practice_points = sort(randsample(1:NPt, NPt/3));
+practice_points = sort(randsample(1:NPt, NPt/2.5));
 Pder = zeros(1,NPt);
 Pder(practice_points) = Po(practice_points);
 
@@ -116,16 +116,10 @@ Pder(practice_points) = Po(practice_points);
 A = A_operator( @(z) pifft(z, find(Pder)), @(z) pfft(z, find(Pder), NPt) );
 mu = 1e-10;
 [Pe, ~] = FPC_AS(NPt, A, nonzeros(Pder), mu);
-%norm(uHat' - uHatder*sqrt(N))
-
-%Hack to get the scale right,
-%Fourier transform is an isometry of L2
-%Pe = Pe/norm(Pe,2);
-%Pe = Pe*norm(Pt);
-
-
 % Hurr durr scale by T
 Pe = Pe*sqrt(NPt)/T;
+Pe = conj(Pe);%??????????SHIT SHIT SHIT SHIT?????????????!!!!!!!!!!!
+
 
 %This...
 Pe = fftshift(Pe);
@@ -151,7 +145,7 @@ y2 = sqrt((z0./z).^2 - 1);
 %axis([0 45 0 35]);
 %title('tan(z)  =  [(z_0/z)^2 - 1]^{1/2}');
 crss_n = [1.5 4.5 7.6 10.8 13.83 16.9 20.0 23.0 26.1 29.1 32.2 35.2 38.2 41.1];
-%% ^-- get these values by looking at the graph (approx)
+% ^-- get these values by looking at the graph (approx)
 g =  inline('tan(z) - sqrt((z0/z).^2 - 1)','z','z0');
 for nrn = 1:14
     zn(nrn) = fzero(@(z) g(z,z0),crss_n(nrn));
@@ -165,12 +159,11 @@ for nrn = 1:length(Em)
     hold on;
     plot([Em(nrn),Em(nrn)],[-17,6]);
 end
-%%
+%
 figure(3)
 plot(E,log(fliplr(abs(Pe))),'r');hold on;
 title('Energy Spectrum (Blue: Even solutions)');
 xlabel('Energy');ylabel('Power');
 axis([-210 0 -17 5]);
-%%
-%%-------------------------------------------------------------------------
+
 

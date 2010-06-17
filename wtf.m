@@ -1,5 +1,5 @@
-
 %what the hell I swear this was working!
+clear all;close all;clc;
 
 N = 4258;
 uHat = randn(1,N) + 1i*randn(1,N);
@@ -18,13 +18,20 @@ uder = zeros(1,N);
 uder(practice_points) = uHatBird(practice_points);
 
 % FPC_AS A_operator class
+% weird shit here...
+% FPC_AS likes A*A^t but fft is unitary
+% so we'd like to work with A*conj(A) instead...
+% shit
 A = A_operator( @(z) pifft(z, find(uder)), @(z) pfft(z, find(uder), N) );
 mu = 1e-10;
 [ue, ~] = FPC_AS(N, A, nonzeros(uder), mu);
-
 ue = ue'*sqrt(N);
+ue = conj(ue); %???!!!!
 
-plot(uHat);hold on;plot(real(ue),'r');
+figure(1)
+plot(real(uHat));hold on;plot(real(ue),'r');
+figure(2)
+plot(imag(uHat));hold on;plot(imag(ue),'r');
 
 fprintf('FPC error: %f \n', norm(uHat - ue));
 
