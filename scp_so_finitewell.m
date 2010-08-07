@@ -12,7 +12,17 @@ M = 1/2; %% Mass
 N = 512;
 x = linspace(-a/2,a/2,N); x = x';
 k = N*linspace(-1/2,1/2,N); k = k';
+
+%Working dimensions
 dt = 1e-3; %% Time step
+NPt = 50000;
+
+%practice dimensions
+%aliasing at multiple of 5
+% skipper = 5.3;
+% dt = dt*skipper;
+% NPt = floor(NPt/skipper);
+
 %%-------------------------------------------------------------------------
 %%
 %%% Potential
@@ -49,16 +59,20 @@ Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
 % figure(1);set(gcf,'position',[37 208 538 732]);
 % plot(x,V,'r');hold on;plot(x,max(abs(real(V)))*abs(Phi0c));hold off; pause(1);
 %%
-GK = fftshift(exp(-(i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
-GK2 = fftshift(exp(-(i*dt/(2*M))*((2*pi/a)^2)*(k.^2))); %% dt kinetic energy propagator
-GV = exp(-i*dt*V); %% Potential spatial interaction
+
+GK = inline(sprintf('fftshift(exp(-(i*dt/(4*%f))*((2*pi/%f)^2)*(k.^2)))',M,a)','dt','k'); %% dt/2 kinetic energy propagator
+GV = inline(sprintf('exp(-1i*dt*V)'),'dt','V'); %% Potential spatial interaction
+
+%GK = fftshift(exp(-(i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
+%GK2 = fftshift(exp(-(i*dt/(2*M))*((2*pi/a)^2)*(k.^2))); %% dt kinetic energy propagator
+%GV = exp(-i*dt*V); %% Potential spatial interaction
+
 % plot((-(dt/(4*M))*((2*pi/a)^2)*(k.^2)));
 % plot(-dt*V);
 %%
 iPhi = fft(Phi0);
-Phi = ifft(iPhi.*GK);
-Phi = GV.*Phi;
-NPt = 50000;
+Phi = ifft(iPhi.*GK(dt,k));
+Phi = GV(dt,V).*Phi;
 Pt = zeros(1,NPt);
 En = -105.99;  %% Energy eigen value
 T = dt*NPt;
@@ -68,20 +82,20 @@ uns = 0;
 tic
 for nrn = 1:NPt
     % momentum space propagation
-    iPhi = iPhi.*GK;
+    iPhi = iPhi.*GK(dt,k);
     % move into physical space and apply potential operator
     Phi = ifft(iPhi);
-    Phi = GV.*Phi;
+    Phi = GV(dt,V).*Phi;
     % move into momentum space and propagate again
     iPhi = fft(Phi);
-    iPhi = iPhi.*GK;
+    iPhi = iPhi.*GK(dt,k);
     % move back into physical space and record P(t) at the sample point
     Phi = ifft(iPhi);
     Pt(nrn) = trapz(x, Phi0c.*Phi);
 end
 toc
 iPhi = fft(Phi);
-Phi = ifft(iPhi.*GK);
+Phi = ifft(iPhi.*GK(dt,k));
 %%
 estep = 1;  %% Sampling period
 Po = Pt(1:estep:length(Pt));
@@ -93,7 +107,7 @@ Pe = fft(Po);
 Pe = fftshift(Pe)/T;
 
 %%
-practice_points = sort(randsample(1:NPt, floor(NPt/9.389) ));
+practice_points = sort(randsample(1:NPt, floor(NPt/6.389) ));
 Pder = zeros(1,NPt);
 Pder(practice_points) = Po(practice_points);
 
@@ -108,9 +122,6 @@ Pe2 = Pe2';
 Pe2 = fftshift(Pe2);
 
 fprintf('error in compressed sensing %f \n', norm(Pe-Pe2)/norm(Pe))
-
-
-
 
 
 %%
@@ -154,15 +165,17 @@ fprintf('error in compressed sensing %f \n', norm(Pe-Pe2)/norm(Pe))
 % xlabel('Energy');ylabel('Power');
 % axis([-210 0 -17 5]);
 %%
-figure(4);
-plot(E,log(fliplr(abs(Pe))),'r');
-hold on;
-plot(E,log(fliplr(abs(Pe2))),'b');
+
+%figure(4);
+%plot(E,log(fliplr(abs(Pe))),'r');
+%hold on;
+%plot(E,log(fliplr(abs(Pe2))),'b');
 
 figure(5);
 plot(E, abs(Pe));
 hold on;
 plot(E, abs(Pe2), 'r--');
+
 
 %%-------------------------------------------------------------------------
 
