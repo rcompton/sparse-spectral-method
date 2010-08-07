@@ -11,24 +11,36 @@ clear all;close all;clc;
 % Define spatial grid vairables
 dx = 0.0825
 Nx = 512
+
 L0 = dx*Nx
-xmax = L0/2
-xmin = -L0/2
-x = linspace(xmin,xmax,Nx);
+%xmax = L0/2
+%xmin = -L0/2
+%x = linspace(xmin,xmax,Nx);
 
 % Define potential
 % For some weird physics reason it's mostly zeros...
-k0 = -132.7074997;
-k2 = 7;
-k3 = 0.5;
-k4 = 1;
-x1 = 3.813;
-x2 = -4.112;
-V = (k0 - k2*x.^2 + k3*x.^3 + k4*x.^4).*(x<x1).*(x2<x);
+% k0 = -132.7074997;
+% k2 = 7;
+% k3 = 0.5;
+% k4 = 1;
+% x1 = 3.813;
+% x2 = -4.112;
+% V = (k0 - k2*x.^2 + k3*x.^3 + k4*x.^4).*(x<x1).*(x2<x);
+
+% Morse Potential
+De = 0.01688;
+beta = 1.47612;
+re = 3.28892;
+x = linspace(0.1,50,Nx);
+V = De*(1 - exp(-beta.*(x - re)) ).^2 - De;
+V = V.*(V < .05);
+
+fprintf('the "min" time is %f', pi/2*max(abs(V)));
+
 
 % Define uniform time domain
 % WTF?!
-dt = .00573 %% Time step (dt < pi/(3*dVmax)...)
+dt = .0173 %% Time step (dt < pi/(3*dVmax)...)
 Nt = 50384
 
 % Define initial wavefunction
@@ -38,7 +50,7 @@ psi0 = exp(-((x-a).^2)/(2*sigmah^2)) + exp(-((x+a).^2)/(2*sigmah^2));
 psi0c = conj(psi0); % real(psi0)- i*imag(psi0);
 
 % Mass
-M = 1/2
+M = 1/2;
 
 % Define spectral vairables
 k = Nx*linspace(-1/2,1/2,Nx);

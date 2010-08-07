@@ -6,7 +6,7 @@
 %%      "Introduction to Quantum Mechanics",
 %%      ISBN 0-13-124405-1
 %% 
-clear all; close all;clc;
+clear all; close all;
 a = 48;  %% Length
 M = 1/2; %% Mass
 N = 512;
@@ -16,7 +16,7 @@ dt = 1e-3; %% Time step
 %%-------------------------------------------------------------------------
 %%
 %%% Potential
-V0 = 600;
+V0 = 200;
 V = zeros(length(x),1) - V0; % 1*((2*x).^2 - (0.6*a)^2);  %  
 b = a/16;
 V(x<-b) = 0;
@@ -45,9 +45,9 @@ Phi0 = exp(-(5*(x-0*a/128)).^2);
 %%-------------------------------------------------------------------------
 %%
 Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
-% %%
-% figure(1);set(gcf,'position',[37 208 538 732]);
-% plot(x,V,'r');hold on;plot(x,max(abs(real(V)))*abs(Phi0c));hold off; pause(1);
+%%
+figure(1);set(gcf,'position',[37 208 538 732]);
+plot(x,V,'r');hold on;plot(x,max(abs(real(V)))*abs(Phi0c));hold off; pause(1);
 %%
 GK = fftshift(exp(-(i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
 GK2 = fftshift(exp(-(i*dt/(2*M))*((2*pi/a)^2)*(k.^2))); %% dt kinetic energy propagator
@@ -85,84 +85,52 @@ Phi = ifft(iPhi.*GK);
 %%
 estep = 1;  %% Sampling period
 Po = Pt(1:estep:length(Pt));
-E = (1/dt)*(linspace(-pi,pi,length(Pt)));
+T = dt*NPt;
+t = linspace(0,T,length(Po));
+E = (1/dt)*(linspace(-pi,pi,length(Po)));
+%%
 Po = (1-cos(2*pi*t/T)).*Po;
-%% Two ways...
-% This way works for sure...
-Pe = fft(Po);
-Pe = fftshift(Pe)/T;
-
+Pe = fftshift(fft((Po/T)));
 %%
-practice_points = sort(randsample(1:NPt, floor(NPt/9.389) ));
-Pder = zeros(1,NPt);
-Pder(practice_points) = Po(practice_points);
-
-% FPC_AS A_operator class
-A = A_operator( @(z) pifft(z, find(Pder)), @(z) pfft(z, find(Pder), NPt) );
-mu = 1e-14;
-[Pe2, ~] = FPC_AS(NPt, A, nonzeros(Pder), mu);
-% Hurr durr scale by T
-Pe2 = Pe2*sqrt(NPt)/T;
-Pe2 = conj(Pe2);%??????????SHIT SHIT SHIT SHIT?????????????!!!!!!!!!!!
-Pe2 = Pe2';
-Pe2 = fftshift(Pe2);
-
-fprintf('error in compressed sensing %f \n', norm(Pe-Pe2)/norm(Pe))
-
-
-
-
-
-%%
-% figure(2);subplot(2,1,1);plot(t,real(Po));
-% title('Correlation Function ');xlabel('Time');
-% figure(2);subplot(2,1,2);plot(E,log(fliplr(abs(Pe))),'r');
-% title('Energy Spectrum');xlabel('Energy');ylabel('Power');
-% axis([-210 0 -17 5]);
-% pause(1);
+figure(2);subplot(2,1,1);plot(t,real(Po));
+title('Correlation Function ');xlabel('Time');
+figure(2);subplot(2,1,2);plot(E,log(fliplr(abs(Pe))),'r');
+title('Energy Spectrum');xlabel('Energy');ylabel('Power');
+axis([-210 0 -17 5]);
+pause(1);
 
 %%-------------------------------------------------------------------------
 %% Analytic method: For Even Solutions (Even Wave functions)
 %%
-% z0 = b*sqrt(2*M*V0);
-% z = 0:0.01:20*pi;
-% y1 = tan(z);
-% y2 = sqrt((z0./z).^2 - 1);
-% figure(3);subplot(2,1,1);plot(z,y1,z,y2);
-% hold on;
-% plot(z,0*z,'r');
-% axis([0 45 0 35]);
-% title('tan(z)  =  [(z_0/z)^2 - 1]^{1/2}');
-% crss_n = [1.5 4.5 7.6 10.8 13.83 16.9 20.0 23.0 26.1 29.1 32.2 35.2 38.2 41.1]; 
+z0 = b*sqrt(2*M*V0);
+z = 0:0.01:20*pi;
+y1 = tan(z);
+y2 = sqrt((z0./z).^2 - 1);
+figure(3);subplot(2,1,1);plot(z,y1,z,y2);
+hold on;
+plot(z,0*z,'r');
+axis([0 45 0 35]);
+title('tan(z)  =  [(z_0/z)^2 - 1]^{1/2}');
+crss_n = [1.5 4.5 7.6 10.8 13.83 16.9 20.0 23.0 26.1 29.1 32.2 35.2 38.2 41.1]; 
 %% ^-- get these values by looking at the graph (approx)
-% g =  inline('tan(z) - sqrt((z0/z).^2 - 1)','z','z0');
-% for nrn = 1:14
-% zn(nrn) = fzero(@(z) g(z,z0),crss_n(nrn));
-% end
-% figure(3);subplot(2,1,1);hold on;plot(zn,tan(zn),'rx');
-% q = zn/b;
-% Em = ((q.^2)/(2*M))-V0;
-% %%
-% for nrn = 1:length(Em),
-%     figure(3);subplot(2,1,2);hold on; 
-%     plot([Em(nrn),Em(nrn)],[-17,6]); 
-% end
+g =  inline('tan(z) - sqrt((z0/z).^2 - 1)','z','z0');
+for nrn = 1:14
+zn(nrn) = fzero(@(z) g(z,z0),crss_n(nrn));
+end
+figure(3);subplot(2,1,1);hold on;plot(zn,tan(zn),'rx');
+q = zn/b;
+Em = ((q.^2)/(2*M))-V0;
 %%
-% figure(3);subplot(2,1,2);
-% plot(E,log(fliplr(abs(Pe))),'r');hold on;
-% title('Energy Spectrum (Blue: Even solutions)');
-% xlabel('Energy');ylabel('Power');
-% axis([-210 0 -17 5]);
+for nrn = 1:length(Em),
+    figure(3);subplot(2,1,2);hold on; 
+    plot([Em(nrn),Em(nrn)],[-17,6]); 
+end
 %%
-figure(4);
-plot(E,log(fliplr(abs(Pe))),'r');
-hold on;
-plot(E,log(fliplr(abs(Pe2))),'b');
-
-figure(5);
-plot(E, abs(Pe));
-hold on;
-plot(E, abs(Pe2), 'r--');
-
+figure(3);subplot(2,1,2);
+plot(E,log(fliplr(abs(Pe))),'r');hold on;
+title('Energy Spectrum (Blue: Even solutions)');
+xlabel('Energy');ylabel('Power');
+axis([-210 0 -17 5]);
+%%
 %%-------------------------------------------------------------------------
 
