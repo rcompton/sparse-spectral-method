@@ -14,8 +14,9 @@ x = linspace(-a/2,a/2,N); x = x';
 k = N*linspace(-1/2,1/2,N); k = k';
 
 %Working dimensions
-dt = 1e-3; %% Time step
+dt = 1e-4; %% Time step
 NPt = 50000;
+T = dt*NPt;
 
 %practice dimensions
 %aliasing at multiple of 5
@@ -26,7 +27,7 @@ NPt = 50000;
 %%-------------------------------------------------------------------------
 %%
 %%% Potential
-V0 = 600;
+V0 = 200;
 V = zeros(length(x),1) - V0; % 1*((2*x).^2 - (0.6*a)^2);  %  
 b = a/16;
 V(x<-b) = 0;
@@ -63,58 +64,104 @@ Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
 GK = inline(sprintf('fftshift(exp(-(i*dt/(4*%f))*((2*pi/%f)^2)*(k.^2)))',M,a)','dt','k'); %% dt/2 kinetic energy propagator
 GV = inline(sprintf('exp(-1i*dt*V)'),'dt','V'); %% Potential spatial interaction
 
-%GK = fftshift(exp(-(i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
+GKfast = fftshift(exp(-(i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
 %GK2 = fftshift(exp(-(i*dt/(2*M))*((2*pi/a)^2)*(k.^2))); %% dt kinetic energy propagator
-%GV = exp(-i*dt*V); %% Potential spatial interaction
+GVfast = exp(-i*dt*V); %% Potential spatial interaction
 
 % plot((-(dt/(4*M))*((2*pi/a)^2)*(k.^2)));
 % plot(-dt*V);
-%%
+%% Do it the way that works
 iPhi = fft(Phi0);
-Phi = ifft(iPhi.*GK(dt,k));
-Phi = GV(dt,V).*Phi;
+%Phi = ifft(iPhi.*GKfast);
+%Phi = GVfast.*Phi;
 Pt = zeros(1,NPt);
 En = -105.99;  %% Energy eigen value
-T = dt*NPt;
-t = linspace(0,T,NPt);
-wt = (1-cos(2*pi*t/length(t)));
+
 uns = 0;
 tic
 for nrn = 1:NPt
     % momentum space propagation
-    iPhi = iPhi.*GK(dt,k);
+    iPhi = iPhi.*GKfast;
     % move into physical space and apply potential operator
     Phi = ifft(iPhi);
-    Phi = GV(dt,V).*Phi;
+    Phi = GVfast.*Phi;
     % move into momentum space and propagate again
     iPhi = fft(Phi);
-    iPhi = iPhi.*GK(dt,k);
+    iPhi = iPhi.*GKfast;
     % move back into physical space and record P(t) at the sample point
     Phi = ifft(iPhi);
     Pt(nrn) = trapz(x, Phi0c.*Phi);
 end
 toc
-iPhi = fft(Phi);
-Phi = ifft(iPhi.*GK(dt,k));
-%%
+%iPhi = fft(Phi);
+%Phi = ifft(iPhi.*GKfast);
+
+%% This way works for sure
+t = linspace(0,T,NPt);
+wt = (1-cos(2*pi*t/length(t)));
+
 estep = 1;  %% Sampling period
 Po = Pt(1:estep:length(Pt));
 E = (1/dt)*(linspace(-pi,pi,length(Pt)));
 Po = (1-cos(2*pi*t/T)).*Po;
-%% Two ways...
-% This way works for sure...
+
 Pe = fft(Po);
 Pe = fftshift(Pe)/T;
 
-%%
-practice_points = sort(randsample(1:NPt, floor(NPt/6.389) ));
-Pder = zeros(1,NPt);
-Pder(practice_points) = Po(practice_points);
+%% Do it the way that helps yourself.
+
+%practice_points = sort(randsample(1:NPt, floor(NPt/6.389) ));
+%Pder = zeros(1,NPt);
+%Pder(practice_points) = Po2(practice_points);
+
+num_rand_samples = floor(NPt/10.521);
+sample_points = randsample(1:NPt, num_rand_samples);
+
+max_gap = 50;
+sample_points = [sample_points 1:max_gap:NPt];
+
+sample_points = sort(unique(sample_points));
+
+dts = diff(sample_points)*dt;
+
+
+iPhi = fft(Phi0);
+Phi = ifft(iPhi.*GK(dts(1),k));
+Phi = GV(dts(1),V).*Phi;
+Pt2 = zeros(1,NPt);
+
+tic
+for nrn = 1:length(dts)
+    dts(nrn);
+    % momentum space propagation
+    iPhi = iPhi.*GK(dts(nrn),k);
+    % move into physical space and apply potential operator
+    Phi = ifft(iPhi);
+    Phi = GV(dts(nrn),V).*Phi;
+    % move into momentum space and propagate again
+    iPhi = fft(Phi);
+    iPhi = iPhi.*GK(dts(nrn),k);
+    % move back into physical space and record P(t) at the sample point
+    Phi = ifft(iPhi);
+    Pt2(sample_points(nrn)) = trapz(x, Phi0c.*Phi);
+end
+toc
+
+
+
+%% From other data...
+
+estep = 1;  %% Sampling period
+Po2 = Pt2(1:estep:length(Pt2));
+E2 = (1/dt)*(linspace(-pi,pi,length(Pt2)));
+Po2 = (1-cos(2*pi*t/T)).*Po2;
+
+
 
 % FPC_AS A_operator class
-A = A_operator( @(z) pifft(z, find(Pder)), @(z) pfft(z, find(Pder), NPt) );
+A = A_operator( @(z) pifft(z, find(Po2)), @(z) pfft(z, find(Po2), NPt) );
 mu = 1e-14;
-[Pe2, ~] = FPC_AS(NPt, A, nonzeros(Pder), mu);
+[Pe2, ~] = FPC_AS(NPt, A, nonzeros(Po2), mu);
 % Hurr durr scale by T
 Pe2 = Pe2*sqrt(NPt)/T;
 Pe2 = conj(Pe2);%??????????SHIT SHIT SHIT SHIT?????????????!!!!!!!!!!!
@@ -175,6 +222,11 @@ figure(5);
 plot(E, abs(Pe));
 hold on;
 plot(E, abs(Pe2), 'r--');
+
+figure(6);
+plot(abs(Po));
+hold on;
+plot(abs(Po2),'r--');
 
 
 %%-------------------------------------------------------------------------
