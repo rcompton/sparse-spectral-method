@@ -71,6 +71,32 @@ GVfast = exp(-i*dt*V); %% Potential spatial interaction
 % plot((-(dt/(4*M))*((2*pi/a)^2)*(k.^2)));
 % plot(-dt*V);
 %% Do it the way that works
+
+P = zeros(N,N);
+for i = 2:N-1
+    for j = 2:N-1
+        if i==j
+            P(i,j) = -2;
+        else if i==j-1
+                P(i,j) = 1;
+        else if i==j+1
+                P(i,j) = 1;
+            end
+            end
+        end
+    end
+end
+P(1,1) = -2;
+P(1,2) = 1;
+P(2,1) = 1;
+P(N,N) = -2;
+P(N,N-1) = 1;
+P(N-1,N) = 1;
+
+H = P/(2*M) + diag(V);
+
+
+Phi = Phi0;
 iPhi = fft(Phi0);
 %Phi = ifft(iPhi.*GKfast);
 %Phi = GVfast.*Phi;
@@ -80,16 +106,24 @@ En = -105.99;  %% Energy eigen value
 uns = 0;
 tic
 for nrn = 1:NPt
-    % momentum space propagation
-    iPhi = iPhi.*GKfast;
-    % move into physical space and apply potential operator
-    Phi = ifft(iPhi);
-    Phi = GVfast.*Phi;
-    % move into momentum space and propagate again
-    iPhi = fft(Phi);
-    iPhi = iPhi.*GKfast;
-    % move back into physical space and record P(t) at the sample point
-    Phi = ifft(iPhi);
+    
+      %%Crank Nicoson
+      Phi = (1 - 1i.*H.*(dt/2))*Phi;
+      Phi = Phi\(1 + 1i.*H.*(dt/2));
+      
+      Phi = Phi';
+%     
+%     % momentum space propagation
+%     iPhi = iPhi.*GKfast;
+%     % move into physical space and apply potential operator
+%     Phi = ifft(iPhi);
+%     Phi = GVfast.*Phi;
+%     % move into momentum space and propagate again
+%     iPhi = fft(Phi);
+%     iPhi = iPhi.*GKfast;
+%     % move back into physical space and record P(t) at the sample point
+%     Phi = ifft(iPhi);
+%     
     Pt(nrn) = trapz(x, Phi0c.*Phi);
 end
 toc
@@ -117,7 +151,7 @@ Pe = fftshift(Pe)/T;
 num_rand_samples = floor(NPt/10.521);
 sample_points = randsample(1:NPt, num_rand_samples);
 
-max_gap = 50;
+max_gap = 20;
 sample_points = [sample_points 1:max_gap:NPt];
 
 sample_points = sort(unique(sample_points));
@@ -223,10 +257,11 @@ plot(E, abs(Pe));
 hold on;
 plot(E, abs(Pe2), 'r--');
 
+
 figure(6);
 plot(abs(Po));
 hold on;
-plot(abs(Po2),'r--');
+plot(abs(Po2),'rx');
 
 
 %%-------------------------------------------------------------------------
