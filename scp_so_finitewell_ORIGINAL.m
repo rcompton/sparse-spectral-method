@@ -28,7 +28,7 @@ V(x>+b) = 0;
 %%
 %%% initial wave packet
 %% Gaussian
-Phi0 = exp(-(5*(x-0*a/128)).^2); 
+Phi0 = exp(-(5*(x-0*a/128)).^2);
 %
 %% Odd
 % mode = 3;
