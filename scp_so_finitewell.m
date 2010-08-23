@@ -69,65 +69,89 @@ Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
 % plot(x,V,'r');hold on;plot(x,max(abs(real(V)))*abs(Phi0c));hold off; pause(1);
 %%
 
-GK = inline(sprintf('fftshift(exp(-(i*dt/(4*%f))*((2*pi/%f)^2)*(k.^2)))',M,a)','dt','k'); %% dt/2 kinetic energy propagator
-GV = inline(sprintf('exp(-1i*dt*V)'),'dt','V'); %% Potential spatial interaction
+%For random stepping....
+%GK = inline(sprintf('fftshift(exp(-(i*dt/(4*%f))*((2*pi/%f)^2)*(k.^2)))',M,a)','dt','k'); %% dt/2 kinetic energy propagator
+%GV = inline(sprintf('exp(-1i*dt*V)'),'dt','V'); %% Potential spatial interaction
 
 
 %GKfast = fftshift(exp(-(1i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
-GKfast = exp(-(1i*dt/(4*M))*(2)^2*(k.^2)); %% dt/2 kinetic energy propagator (different k)
+%GKfast = exp(-(1i*dt/(4*M))*(2)^2*(k.^2)); %% dt/2 kinetic energy propagator (different k)
+
 %GK2 = fftshift(exp(-(i*dt/(2*M))*((2*pi/a)^2)*(k.^2))); %% dt kinetic energy propagator
-GVfast = exp(-1i*dt*V); %% Potential spatial interaction
+
+%GVfast = exp(-1i*dt*V); %% Potential spatial interaction
 
 % plot((-(dt/(4*M))*((2*pi/a)^2)*(k.^2)));
 % plot(-dt*V);
-%% Do it the way that works
+%% Do it a way that works
 
-
-Phi = Phi0;
-iPhi = fft(Phi0);
 %Phi = ifft(iPhi.*GKfast);
 %Phi = GVfast.*Phi;
-Pt = zeros(1,NPt);
+%Pt = zeros(1,NPt);
 En = -105.99;  %% Energy eigen value
 
-figure()
-plot(Phi);
+%figure()
+%plot(Phi);
 
-bigPhi = real(Phi);
+%bigPhi = real(Phi);
+
+%get first 2 steps for SOD later...
+
+iPhi = fft(Phi0);
+%use Strang splitting to move to Psi1
+GKfast = exp(-(1i*dt/(4*M))*(2^2)*(k.^2)); %% dt/2 kinetic energy propagator
+GVfast = exp(-1i*dt*V); %% Potential spatial interaction
+
+% momentum space propagation
+iPhi1 = fft(Phi0).*GKfast;
+% move into physical space and apply potential operator
+Phi1 = ifft(iPhi1);
+Phi1 = GVfast.*Phi1;
+% move into momentum space and propagate kinetic energy
+iPhi1 = fft(Phi1);
+iPhi1 = iPhi1.*GKfast;
+% move back into physical space
+Phi1 = ifft(iPhi1);
+
+Phis = zeros(length(Phi0), NPt);
+Phis(:,1) = Phi0;
+Phis(:,2) = Phi1;
 
 uns = 0;
 fprintf('about to do this the fast way');
 tic
-for nrn = 1:NPt    
+for nrn = 3:NPt
+    
+    %For Strang propagation start nrn at 3
+    
     % momentum space propagation
-    iPhi = iPhi.*GKfast;
+    iPhi = fft(Phis(:,nrn-1)).*GKfast;
     % move into physical space and apply potential operator
-    Phi = ifft(iPhi);
-    Phi = GVfast.*Phi;
+    Phis(:,nrn) = ifft(iPhi);
+    Phis(:,nrn) = GVfast.*Phis(:,nrn);
     % move into momentum space and propagate again
-    iPhi = fft(Phi);
+    iPhi = fft(Phis(:,nrn));
     iPhi = iPhi.*GKfast;
     % move back into physical space and record P(t) at the sample point
-    Phi = ifft(iPhi);
+    Phis(:,nrn) = ifft(iPhi);
     
-    if mod(nrn, 60) == 0
-        %fprintf('plot\n');
-        %figure();
-        %plot(x,real(Phi));
-        %hold on;
-        %plot(x,V,'r');
-        %hold off;
-        bigPhi = [bigPhi real(Phi)];
-    end
-    
-    Pt(nrn) = trapz(x, Phi0c.*Phi);
 end
 toc
+
+%% Make the autocorrelation function
+Pt = zeros(1,NPt);
+for nrn=1:NPt
+    Pt(nrn) = trapz(x,Phis(:,nrn).*conj(Phi0));
+end
+
+
 %iPhi = fft(Phi);
 %Phi = ifft(iPhi.*GKfast);
 
-%make something look cool...
-imshow(bigPhi);
+
+
+%% make something look cool...
+imshow(Phis(N/3:2*N/3, 1:3000));
 colormap hot;
 
 %% This way works for sure
@@ -142,8 +166,8 @@ Po = (1-cos(2*pi*t/T)).*Po;
 Pe = fft(Po);
 Pe = fftshift(Pe)/T;
 
-figure();
-plot(E,abs(Pe));
+% figure();
+% plot(E,abs(Pe));
 
 % %% Do it the way that helps yourself.
 % 
