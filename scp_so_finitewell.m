@@ -11,7 +11,11 @@ a = 48;  %% Length
 M = 1/2; %% Mass
 N = 512;
 x = linspace(-a/2,a/2,N); x = x';
-k = N*linspace(-1/2,1/2,N); k = k';
+%k = N*linspace(-1/2,1/2,N); k = k';
+k = -N/2:N/2-1;
+k = k';
+k = k*1*pi/a;
+k = fftshift(k);
 
 %Working dimensions
 dt = 1e-3; %% Time step
@@ -68,9 +72,11 @@ Phi0c = conj(Phi0); %% real(Phi0)- i*imag(Phi0);
 GK = inline(sprintf('fftshift(exp(-(i*dt/(4*%f))*((2*pi/%f)^2)*(k.^2)))',M,a)','dt','k'); %% dt/2 kinetic energy propagator
 GV = inline(sprintf('exp(-1i*dt*V)'),'dt','V'); %% Potential spatial interaction
 
-GKfast = fftshift(exp(-(i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
+
+%GKfast = fftshift(exp(-(1i*dt/(4*M))*((2*pi/a)^2)*(k.^2))); %% dt/2 kinetic energy propagator
+GKfast = exp(-(1i*dt/(4*M))*(2)^2*(k.^2)); %% dt/2 kinetic energy propagator (different k)
 %GK2 = fftshift(exp(-(i*dt/(2*M))*((2*pi/a)^2)*(k.^2))); %% dt kinetic energy propagator
-GVfast = exp(-i*dt*V); %% Potential spatial interaction
+GVfast = exp(-1i*dt*V); %% Potential spatial interaction
 
 % plot((-(dt/(4*M))*((2*pi/a)^2)*(k.^2)));
 % plot(-dt*V);
