@@ -120,20 +120,23 @@ Phis(:,2) = Phi1;
 uns = 0;
 fprintf('about to do this the fast way');
 tic
-for nrn = 3:NPt
-    
+for nrn = 3:NPt 
     %For Strang propagation start nrn at 3
     
-    % momentum space propagation
-    iPhi = fft(Phis(:,nrn-1)).*GKfast;
-    % move into physical space and apply potential operator
-    Phis(:,nrn) = ifft(iPhi);
-    Phis(:,nrn) = GVfast.*Phis(:,nrn);
-    % move into momentum space and propagate again
-    iPhi = fft(Phis(:,nrn));
-    iPhi = iPhi.*GKfast;
-    % move back into physical space and record P(t) at the sample point
-    Phis(:,nrn) = ifft(iPhi);
+%     % momentum space propagation
+%     iPhi = fft(Phis(:,nrn-1)).*GKfast;
+%     % move into physical space and apply potential operator
+%     Phis(:,nrn) = ifft(iPhi);
+%     Phis(:,nrn) = GVfast.*Phis(:,nrn);
+%     % move into momentum space and propagate again
+%     iPhi = fft(Phis(:,nrn));
+%     iPhi = iPhi.*GKfast;
+%     % move back into physical space and record P(t) at the sample point
+%     Phis(:,nrn) = ifft(iPhi);
+    
+    %Compute HPhinm1 via Fourier method
+    HPhinm1 = ifft(-((1*k).^2).*fft(Phis(:,nrn-1))) + V.*Phis(:,nrn-1); 
+    Phis(:,nrn) = Phis(:,nrn-2) - 2i * dt * HPhinm1;
     
 end
 toc
@@ -144,14 +147,8 @@ for nrn=1:NPt
     Pt(nrn) = trapz(x,Phis(:,nrn).*conj(Phi0));
 end
 
-
-%iPhi = fft(Phi);
-%Phi = ifft(iPhi.*GKfast);
-
-
-
 %% make something look cool...
-imshow(Phis(N/3:2*N/3, 1:3000));
+imshow(Phis(N/3:2*N/3, 1:20:20000));
 colormap hot;
 
 %% This way works for sure

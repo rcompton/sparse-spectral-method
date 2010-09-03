@@ -1,0 +1,57 @@
+\documentclass[12pt]{amsart}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{algorithmic}
+
+\newcommand{\R}{\mathbb{R}}
+
+\newtheorem{thm}{Theorem}[section]
+\newtheorem{lem}[thm]{Lemma}
+
+\theoremstyle{remark}
+\newtheorem{rem}{Remark}
+\newtheorem{defn}{Definition}
+
+
+\title{Notes on sparse spectral method}
+\author{Ryan Compton}
+\date{Aug 16, 2010}
+
+
+\begin{document}
+\maketitle
+
+We are interested in solving the time indpendent Hamiltonian eigenvalue problem
+\begin{equation}
+H\psi = \lambda \psi
+\end{equation}
+via a spectral method \cite{FEIT1982}. In classical applications this entails solving the time dependent problem
+\begin{equation}
+H\psi = \partial_t \psi
+\end{equation}
+at uniformly spaced points in time with resolution limited by the Nyquist rate
+\begin{equation}\label{nyquist}
+\Delta t < \pi / V_{max}
+\end{equation}
+followed by an FFT of $\psi$ into the energy domain to obtain
+\begin{equation}
+\hat{\psi}(\lambda) = \sum a_n \delta(\lambda - \lambda_n)
+\end{equation}
+which is sparse. If we can accurately sample the time dependent wavefunction at sparse random locations (ie take some very long timesteps) then we may avoid condition (\ref{nyquist}) by replacing the FFT with $L^1$ minimization. Solving the time dependent problem is accomplished by successively applying complex expoentials
+\begin{equation}
+\psi(t) = e^{-iH\Delta t}\psi(0).
+\end{equation}
+It turns out that this can (probably) be done to spectral accuracy by expanding $e^{-iH\Delta t}$ into a Chebyshev polynomial series and applying the kinetic energy operator by multiplication in $k$-space \cite{Fritz1983} \cite{Fritz1983}.
+
+\section{Notes}
+
+I'm stuck on the propagators that are not Strang splitting. I'm guessing that the problem is how I discretize k-space
+
+Also, be careful about off by 1 errors in Pt!!!
+
+\bibliographystyle{plain}
+\bibliography{thebib}
+
+\end{document}

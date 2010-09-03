@@ -86,9 +86,9 @@ Phi = ifft(iPhi.*GK);
 %%
 
 %this is crap this is crap careful about what you're doing here!
-disp('!!!!!!!!warning shifting Pt!!');
-Pt = [Pt(1) Pt];
-Pt = Pt(1:length(Pt)-1);
+% disp('!!!!!!!!warning shifting Pt!!');
+% Pt = [Pt(1) Pt];
+% Pt = Pt(1:length(Pt)-1);
 
 estep = 1;  %% Sampling period
 Po = Pt(1:estep:length(Pt));
