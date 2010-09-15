@@ -1,5 +1,6 @@
 %
-% Fourier-Chebyshev method solution to finite square well
+% Fourier method solution to harmonic osc.
+% I'm trying to reproduce Kosloff's original chebyshev result.
 %
 clear all; close all;clc;
 a = 48;  %% Size of domain
@@ -8,7 +9,6 @@ N = 512; %% Spatial domain
 
 x = linspace(-a/2,a/2,N);
 x = x';
-dx = x(34)-x(33);
 
 %k = N*linspace(-1/2,1/2,N); k = k';
 k = -N/2:N/2-1;
@@ -18,9 +18,8 @@ k = fftshift(k);
 
 %Working dimensions
 dt = 1e-3; %% Time step
-NPt = 2000;
+NPt = 200000;
 T = dt*NPt;
-
 
 V0 = 200;
 V = zeros(length(x),1) - V0; % 1*((2*x).^2 - (0.6*a)^2);  %  
@@ -58,25 +57,16 @@ Phis = zeros(length(Phi0), NPt);
 Phis(:,1) = Phi0;
 Phis(:,2) = Phi1;
 
-%% Use the Chebyshev to propagate the Fourier method
-%GK =
-inline(sprintf('fftshift(exp(-(i*dt/(4*%f))*((2*pi/%f)^2)*(k.^2)))',M,a)','dt','k'); %% dt/2 kinetic energy propagator
+%% Use the SOD to propagate the Fourier method
+H = inline( 'ifft(-(k.^2).*fft(Phi)) + V.*Phi','V','k','Phi'); 
 
-H = inline( 'ifft(-(k.^2).*fft(Phi)) + V.*Phis','V','k','Phi'); 
-    
 tic
 for n=3:NPt-1
-    
     %Compute HPhinm1 via Fourier method
-    %HPhinm1 = ifft(-(k.^2).*fft(Phis(:,n-1))) + V.*Phis(:,n-1); 
+    %HPhinm1 =ifft(-(k.^2).*fft(Phis(:,n-1))) + V.*Phis(:,n-1);
     
-    
-    Phis(:,n) = chebyshev_apply(dx,M,V,k, dt,Phis(:,n-1) );
-    
-    fprintf('step %f out of %f \n' ,n,NPt);
-    
-    
-    %Phis(:,n) = Phis(:,n-2) - 2i * dt * HPhinm1;
+    HPhinm1 = H(V,k,Phis(:,n-1));
+    Phis(:,n) = Phis(:,n-2) - 2i * dt * HPhinm1;
     
 %     % momentum space propagation
 %     iPhi = fft(Phis(:,n)).*GKfast;
