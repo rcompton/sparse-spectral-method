@@ -24,8 +24,10 @@ dE = max(eigh) - min(eigh);
 
 %normalize H
 %Hnorm = 2*(H - 0.5*(emax+emin)*eye(n))/(emax-emin);
-Hnorm = 2*(H - min(eigh))/(max(eigh) - min(eigh)) - eye(n);
+%Hnorm = 2*(H - eye(n)*min(eigh))/(max(eigh) - min(eigh)) - eye(n);
 %Hnorm = -1i*H*dt/R;
+
+Hnorm = (2/dE)*H - ((2*min(eigh)/dE) + 1)*eye(n);
 
 eig(Hnorm)
 

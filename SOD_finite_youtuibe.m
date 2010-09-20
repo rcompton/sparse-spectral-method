@@ -15,8 +15,8 @@ u = zeros(1, n);
 ut = zeros(1, n);
 fps = 30; %frames per second
 tmax = 5*fps;
-steps = 2000; % steps calculated per frame dt < .25*dx^2 ?Depends on M
-dt = 1 / steps; %time step
+steps = 200; % steps calculated per frame dt < .25*dx^2 ?Depends on M
+dt = 100 / steps; %time step
 
 
 
@@ -86,17 +86,23 @@ while t <= tmax
     %u = u + ut * dt; %Euler's method        
     
     %SOD without inline function.
-    Hu = (-1/(2*M))*([0 0 u] - 2*[0 u 0] + [u 0 0])/(dx^2);
-    Hu = Hu(2:end-1) + V.*u;
-    u = unm1 - 2i*dt*Hu;
-
+    %Hu = (-1/(2*M))*([0 0 u] - 2*[0 u 0] + [u 0 0])/(dx^2);
+    %Hu = Hu(2:end-1) + V.*u;
+    %u = unm1 - 2i*dt*Hu;
+    
+    
     %u = unm1 - 2i*dt*H(M,V,dx,un); %SOD
     %u = unm1 - 2i*dt*Hspec(M,V,dx,un); %SOD Fourier
 
-    un = u;
-    unm1 = un;
+    %un = u;
+    %unm1 = un;
     
-    
+    %cross fingers
+    if mod(steps,700)==0
+        u = chebystep(M,dx,V,dt,u,true);
+    else
+        u = chebystep(M,dx,V,dt,u,false);
+    end
     %u = chebyshev_apply(dx, M, V, k, dt, u);
     
     
