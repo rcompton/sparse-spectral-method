@@ -5,9 +5,13 @@ n = 170;
 A = randn(n) + 1i*randn(n);
 H = A*A';
 
+%semi-normal
+eigH = eig(H);
+H = H/(max(eigH) - min(eigH)) + 2*eye(n);
+eig(H)
 
 % we want to apply e^(-iHdt) to psi0
-dt = .10;
+dt = 1e-1;
 psi0 = 1.2*abs(randn(n,1)).*sin(linspace(-pi,pi,n))';
 psi0 = psi0/norm(psi0);
 
@@ -17,10 +21,10 @@ psi0 = psi0/norm(psi0);
 %Wtf, original paper had a typo for this?!
 %is this just a cultural thing?
 eigh = eig(H);
-R = dt*(max(eigh)-min(eigh))/2; %What's the 2 for?
-G = min(eigh)*dt;
+%R = dt*(max(eigh)-min(eigh))/2; %What's the 2 for?
+%G = min(eigh)*dt;
 
-dE = max(eigh) - min(eigh);
+dE = max(eigh) - min(eigh)
 
 %normalize H
 %Hnorm = 2*(H - 0.5*(emax+emin)*eye(n))/(emax-emin);
@@ -29,11 +33,11 @@ dE = max(eigh) - min(eigh);
 
 Hnorm = (2/dE)*H - ((2*min(eigh)/dE) + 1)*eye(n);
 
-eig(Hnorm)
+eig(Hnorm);
 
-%%
+
 %figure maxk for a given timestep
-maxk = 20;
+maxk = 2;
 nexttenjays = 1:.3:1.5;
 while max( abs(besselj(maxk,dE*dt*nexttenjays)) ) > 1e-6 %&& abs(besselj(maxk,dt*(jdt+pi))) >1e-6
     maxk = maxk+1;

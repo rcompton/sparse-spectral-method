@@ -7,7 +7,7 @@ n = 512; % number of divisions of x
 L = 50;
 
 %x = 0:dx:n;
-x = linspace(0, L, n); 
+x = linspace(0.1, L, n);
 dx = x(21) - x(20)
 
 
@@ -15,8 +15,9 @@ u = zeros(1, n);
 ut = zeros(1, n);
 fps = 30; %frames per second
 tmax = 5*fps;
-steps = 200; % steps calculated per frame dt < .25*dx^2 ?Depends on M
-dt = 100 / steps; %time step
+steps = 400; % steps calculated per frame dt < .25*dx^2 ?Depends on M
+dt = 1 / steps; %time step, unstable at 1/200 with SOD!
+
 
 
 
@@ -62,15 +63,11 @@ f = 0;
 H = inline( '(-1/(2*M))*4*del2(Phi,dx) + V.*Phi','M', 'V', 'dx', 'Phi');
 
 %spectral style differencing.
-%k = n*linspace(-1/2,1/2,n); k = k';
-
-k = -n/2:n/2-1;
-%k = k';
-%k = k*1*pi/abs(max(x)-min(x));
-k = k*1*pi/L;
+k = -n/2:(n/2-1);
+k = k.*pi./L;
 k = fftshift(k);
-Hspec = inline( '(-1/(2*M))*ifft(-(k.^2).*fft(Phi)) + V.*Phi','M','V','k','Phi');
 
+Hspec = inline( '(-1/(2*M))*ifft(-(k.^2).*fft(Phi)) + V.*Phi','M','V','k','Phi');
 
 u0 = u;
 Pt = zeros(1,ceil(tmax/dt));
@@ -83,28 +80,31 @@ counter = 1;
 while t <= tmax
     %ut = -1i*((-1/(2*M))*4*del2(u,dx) +V.*u); % i*a * u_xx + i*V*u
     %ut = -1i*H(M,V,dx,u);
-    %u = u + ut * dt; %Euler's method        
-    
-    %SOD without inline function.
-    %Hu = (-1/(2*M))*([0 0 u] - 2*[0 u 0] + [u 0 0])/(dx^2);
-    %Hu = Hu(2:end-1) + V.*u;
-    %u = unm1 - 2i*dt*Hu;
-    
+    %u = u + ut * dt; %Euler's method
     
     %u = unm1 - 2i*dt*H(M,V,dx,un); %SOD
     %u = unm1 - 2i*dt*Hspec(M,V,dx,un); %SOD Fourier
-
-    %un = u;
-    %unm1 = un;
+%     
+   %SOD without inline function.
+    %Hu = (-1/(2*M))*([0 0 u] - 2*[0 u 0] + [u 0 0])/(dx^2);
+    %Hu = Hu(2:end-1) + V.*u;
+    
+    %Fourier method (better)
+    Hu = (-1/(2*M))*ifft(-(k.^2).*fft(u));
+    Hu = Hu + V.*u;
+    
+    u = unm1 - 2i*dt*Hu;
+    
+    un = u;
+    unm1 = un;
     
     %cross fingers
-    if mod(steps,700)==0
-        u = chebystep(M,dx,V,dt,u,true);
-    else
-        u = chebystep(M,dx,V,dt,u,false);
-    end
-    %u = chebyshev_apply(dx, M, V, k, dt, u);
-    
+%      if mod(steps,700)==0
+%          u = chebystep(M,dx,V,dt,u,true);
+%      else
+%          u = chebystep(M,dx,V,dt,u,false);
+%      end
+%     
     
     % plot u, V, pdf
     f = mod(f+1, steps/5);
@@ -123,7 +123,7 @@ while t <= tmax
         aviobj = addframe(aviobj,F);
     end
     t = t + dt;
-
+    
     
     Pt(counter) = trapz(x,u.*conj(u0));
     counter = counter + 1;

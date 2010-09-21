@@ -17,13 +17,13 @@ minE = min(V);
 
 
 %figure maxk for a given timestep
-maxk = 20;
+maxk = 50;
 nexttenjays = 1:.3:1.5;
 while max( abs(besselj(maxk,dE*dt*nexttenjays)) ) > 1e-6
     maxk = maxk+1; 
 end
-maxk
-dE*dt
+maxk;
+dE*dt;
 
 %make maxk Tkpsis
 Tkpsis = zeros(maxk,n);
@@ -45,7 +45,7 @@ for k=2:maxk-1
     bsls(k) = abs(besselj(k,dt*dE));
 end
 
-if plot
-    figure();
-    plot(bsls);
-end
+% if plot
+%     figure();
+%     plot(bsls);
+% end
