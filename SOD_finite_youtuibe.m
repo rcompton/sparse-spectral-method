@@ -15,11 +15,11 @@ u = zeros(1, n);
 ut = zeros(1, n);
 fps = 30; %frames per second
 tmax = 5*fps;
-steps = 400; % steps calculated per frame dt < .25*dx^2 ?Depends on M
+
+%each frame is 1 unit of time.
+%for a chebyshev video you'll want 1 (or less) steps per frame
+steps = 500; % steps calculated per frame dt < .25*dx^2 ?Depends on M
 dt = 1 / steps; %time step, unstable at 1/200 with SOD!
-
-
-
 
 %Parameters and initial consditions
 %u0, V, a
@@ -38,8 +38,6 @@ betah = 1.47612;
 u = exp(-((x-3)/.25).^2);
 V = De*(1-exp(-betah*(x-re))).^2 - De;
 V = V.*(V < 0.5) + (V>0.5);
-
-
 
 M = 50;
 fprintf('stability condition %f \n', (1/(2*M))*dt/dx^2);
@@ -69,12 +67,27 @@ k = fftshift(k);
 
 Hspec = inline( '(-1/(2*M))*ifft(-(k.^2).*fft(Phi)) + V.*Phi','M','V','k','Phi');
 
+dE = (pi^2)/(2*M*dx^2) + max(V) - min(V)
+maxE = (pi^2)/(2*M*dx^2) + max(V)
+minE = min(V)
+
+%obviously this will fail because
+%you never should evolve a normalized H
+%you only normalize in the Cheby approx
+%and then expand with the help of a phase shift...
+Hnormspec = inline( '(2/dE)*((-1/(2*M))*ifft(-(k.^2).*fft(Phi)) + V.*Phi) - (1+2*minE/dE).*Phi','M', 'V','dE','minE','k','dx','Phi');
+%Hnormspec = inline( '(2/dE)*((-1/(2*M))*4*del2(Phi,dx) + V.*Phi) - (1+2*minE/dE).*Phi','M', 'V','dE','minE','k','dx','Phi');
+
+
+
 u0 = u;
 Pt = zeros(1,ceil(tmax/dt));
 
 %Euler to get u1
 unm1 = u;
-un = u - 1i*dt*H(M,V,dx,unm1);
+un = u - 1i*dt*Hspec(M,V,k,unm1);
+%un = u - 1i*dt*Hnormspec(M,V,dE,minE,k,dx,unm1);
+
 
 counter = 1;
 while t <= tmax
@@ -90,15 +103,18 @@ while t <= tmax
     %Hu = Hu(2:end-1) + V.*u;
     
     %Fourier method (better)
-    Hu = (-1/(2*M))*ifft(-(k.^2).*fft(u));
-    Hu = Hu + V.*u;
+    %Hu = (-1/(2*M))*ifft(-(k.^2).*fft(u));
+    %Hu = Hu + V.*u;
+    
+    Hu = Hspec(M,V,k,u);
+    %Hu = Hnormspec(M,V,dE,minE,k,dx,u);
     
     u = unm1 - 2i*dt*Hu;
-    
     un = u;
-    unm1 = un;
+    unm1 = un; 
     
     %cross fingers
+    %u = chebystep(M,dx,L,V,dt,u,true);
 %      if mod(steps,700)==0
 %          u = chebystep(M,dx,V,dt,u,true);
 %      else
@@ -122,8 +138,8 @@ while t <= tmax
         F = getframe(fig1);
         aviobj = addframe(aviobj,F);
     end
-    t = t + dt;
     
+    t = t + dt;   
     
     Pt(counter) = trapz(x,u.*conj(u0));
     counter = counter + 1;

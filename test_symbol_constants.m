@@ -1,6 +1,5 @@
 clear all;close all;clc;
 
-
 %% From Trefelthen's Book
 % set up parameters
 
