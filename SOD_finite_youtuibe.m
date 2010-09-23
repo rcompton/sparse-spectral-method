@@ -76,9 +76,8 @@ minE = min(V)
 %you only normalize in the Cheby approx
 %and then expand with the help of a phase shift...
 Hnormspec = inline( '(2/dE)*((-1/(2*M))*ifft(-(k.^2).*fft(Phi)) + V.*Phi) - (1+2*minE/dE).*Phi','M', 'V','dE','minE','k','dx','Phi');
-%Hnormspec = inline( '(2/dE)*((-1/(2*M))*4*del2(Phi,dx) + V.*Phi) - (1+2*minE/dE).*Phi','M', 'V','dE','minE','k','dx','Phi');
-
-
+%Hnormspec = inline( '(2/dE)*((-1/(2*M))*4*del2(Phi,dx) + V.*Phi) -
+%(1+2*minE/dE).*Phi','M', 'V','dE','minE','k','dx','Phi');
 
 u0 = u;
 Pt = zeros(1,ceil(tmax/dt));
@@ -140,7 +139,7 @@ while t <= tmax
     end
     
     t = t + dt;   
-    
+    norm(u)
     Pt(counter) = trapz(x,u.*conj(u0));
     counter = counter + 1;
 end

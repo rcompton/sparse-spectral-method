@@ -9,7 +9,7 @@ dx = x(21) - x(20)
 
 %steps = 200; % steps calculated per frame dt < .25*dx^2 ?Depends on M
 %dt = 1 / steps; %time step, unstable at 1/200 with SOD!
-dt = 73;
+dt = 100;
 
 re = 3.2889;
 De = 0.01688;
