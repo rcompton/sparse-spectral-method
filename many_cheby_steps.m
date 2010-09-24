@@ -31,7 +31,7 @@ Nt = tmax/dt;
 %V = zeros(size(x));
 %V = .7*(x<-L/3) + .8*(x>L/3);
 %V = (2*x).^2;
-V = 3.8*(x< -L/16) + 3.8*(x > L/16);
+V = 5.8*(x< -L/16) + 5.8*(x > L/16);
 V = V';
 
 
@@ -56,7 +56,7 @@ k = fftshift(k)';
 
 %psi0 = u;
 %psi0 = exp(-((x-3)/.25).^2);
-psi0 = exp(-(5*x).^2);
+psi0 = exp(-(5*(x-.7)).^2);
 psi0 = psi0';
 I = trapz(x,psi0.*conj(psi0));
 psi0 = psi0 / sqrt(I);
@@ -88,7 +88,7 @@ for nrn = 2:Nt
         %Tkpsis(:,k) = 2*Hnorm(M,V,dE,minE,dx,Tkpsis(:,k-1)) - Tkpsis(:,k-2);
         Tkpsis(:,kunt) = 2*Hnormspec(M,V,dE,minE,k,dx,x,Tkpsis(:,kunt-1)) - Tkpsis(:,kunt-2);
     end
-    kunt
+    
     
     %make the sum
     chebsum = besselj(0,dt*dE)*Tkpsis(:,1);
@@ -101,21 +101,26 @@ for nrn = 2:Nt
     
     %% ploting
     
-    plot(x,V,'color','g','linewidth',2);
-    hold on
-    plot(x,real(chebsum),'--','color','r')
-    plot(x,imag(chebsum),'--','color','b')
-    pdf = chebsum.*conj(chebsum);
-    plot(x,pdf,'-','linewidth',1,'color','k','linewidth',2);
-    axis([min(x), max(x), -1, 4]);
-    %axis off
-    hold off
-    F = getframe(fig1);
-    aviobj = addframe(aviobj,F);
+%     plot(x,V,'color','g','linewidth',2);
+%     hold on
+%     plot(x,real(chebsum),'--','color','r')
+%     plot(x,imag(chebsum),'--','color','b')
+%     pdf = chebsum.*conj(chebsum);
+%     plot(x,pdf,'-','linewidth',1,'color','k','linewidth',2);
+%     axis([min(x), max(x), -1, 4]);
+%     %axis off
+%     hold off
+%     F = getframe(fig1);
+%     aviobj = addframe(aviobj,F);
     
     % record the autocorrelation...
     Pt(nrn) = trapz(x,chebsum.*conj(psi0));
-    trapz(x,psis(:,nrn).*conj(psis(:,nrn)))
+    
+    
+    
+    %check for norm conservation
+    %trapz(x,psis(:,nrn).*conj(psis(:,nrn)));
+    
 
 end
 close(fig1);
@@ -133,45 +138,55 @@ E = (1/dt)*(linspace(-pi,pi,length(Pt)));
 Po = (1-cos(2*pi*ts/tmax)).*Po;
 
 Pe = fft(Po);
-Pe = fftshift(Pe)/tmax;
+Pe = fftshift(Pe);
 
 figure();
 plot(E,abs(Pe));
 
 %% Practice points for the L1 reconstruction.
-
 %seed the random generator with the example seeder
 stream = RandStream('mrg32k3a');
 
-num_samples = Nt/4;
+
+num_samples = Nt/5;
 
 %make our downsampling matrix
-sample_points = randsample(stream,1:Nt, num_samples);
+sample_points = sort(randsample(stream,1:Nt, num_samples));
 
 % FPC_AS A_operator class
-A = A_operator( @(z) pifft(z,sample_points), @(z) pfft(z,sample_points,n) );
+A = A_operator( @(z) pifft(z,sample_points), @(z) pfft(z,sample_points,Nt) );
 
 % tiny mu corresponds to heavy weight on the fidelity term
 mu = 1e-10;
 
-%downsample.
+%downsample practice
 %u_samples are what we measure from the expensive machine
 %we simulate measured data with the following line:
-%u_samples = Po(sample_points)'; %apply the first operator in A_operator.
+% usparse = zeros(1,Nt);
+% usparse(randsample(1:Nt, Nt/100)) = .5*randn(1,Nt/100);
+% usparseIFT = ifft(usparse)*sqrt(Nt);
+% u_samples = usparseIFT(sample_points);
+% u_samples = transpose(u_samples);
+%Pe = usparse;
+
+
+
+
 u_samples = transpose(Po(sample_points)*sqrt(length(Po)));
 
 %fprintf('u-Po %f\n',norm(u - Po));
-
 % Call Wotao's code.
 %[Pe_new, Out] = FPC_AS(n, A, u_samples, mu);
 
 [uHat_approx, Out] = FPC_AS(Nt, A, u_samples, mu);
 
+uHat_approx = fftshift(uHat_approx); %Why?
+
 close all;
 figure()
 hold on;
-plot(abs(fft(usparseIFT)/sqrt(length(usparse)) ));
-plot(abs(uHat_approx),'r--');
+plot(E,abs(Pe));
+plot(E,abs(uHat_approx),'r--');
 
 %% Neat picture
 figure();
