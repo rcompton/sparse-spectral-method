@@ -17,17 +17,77 @@
 
 \title{Notes on sparse spectral method}
 \author{Ryan Compton}
-\date{Aug 16, 2010}
+\date{Sep 25, 2010}
 
 
 \begin{document}
 \maketitle
 
-We are interested in approximating $e^{-iHdt}$ via a Chebyshev expansion
+\section{Introduction}
+
+The spectral method is a fundamental tool for solving Schrodinger's equation. Since its introduction by Feit in 1982 \cite{FEIT1982} the method has become regarded as one of the most accurate and efficient ways to compute eigenvalues of hermitian operators netting the original paper over one thousand citations at the time of this writing. Key to the method is a Fourier transformation of the autocorrelation function of a solution to the time dependent Schrodinger equation into the energy domain. Relevant spectral information about the wave function is then extracted using line fitting techniques in this space.
+
+The accuracy of the energy domain representation is limited by the uncertainty principle in two ways. Highly resolved energy domain signals require long time propagations. Explicitly, the lower bound on the density of states that can be resolved is $\frac{2 \pi}{T}$ where $T$ is the total propagation time. In the situation where one desires eigenvalues in a specified range this uncertainty principle has been overcome by Neuhauser with the Filter Diagonalization method \cite{Wall1995} \cite{Neuhauser1994} \cite{Mandelshtam2001}.
+
+Another limitation imposed by the uncertainty principle is that the autocorrelation function must be sampled at the Nyquist rate $ \delta t < pi / \delta E $ to aviod aliasing errors. This is traditionally dealt with by truncating the potential appropiately and advancing the time dependent wave function over short time steps. In this work we seek to overcome this by making use of ideas from the theory of compressive sensing \cite{Candes2006}. We propose that the energy domain representation of the autocorreltation function
+\begin{equation}
+G(E) = \sum_n^d |A_n|^2 \delta(E-E_n)
+\end{equation}
+be modeled as a sparse signal which implies that it may be recovered from sparse random measurements in the time time domain. In particular, our results guarentee that the eigenvalues may be exactly obtained with overwhelmingly high probability provided that the number of samples of the autocorrelation function is of cardinality $\mathcal{O}(d \log(N)$ where $N$ is the number of points in our arrays and $d$ is the number of eigenvalues of our operator.
+
+
+\section{Review of the spectral method}
+
+We are interested in solutions to
+\begin{equation}
+H \psi = \lambda \psi
+\end{equation}
+for this we consider solutions to the time dependent Schrodinger equation
+\begin{eqnarray}
+\psi(t) &=& e^{-iHt}\psi(0) \\
+&=& \sum_{n=1}^d A_n e^{-i\lambda_n t} \phi_n
+\end{eqnarray}
+where $\{ \phi_n \}$ are the orthonormal eigenstates with eigenvalues $\{ \lambda_n \}$ and $A_n = \langle \phi_n \mid \psi(0) \rangle$. Form the autocorrelation function of $\psi(t)$
+\begin{equation}
+\mathcal{P}(t) = \langle \psi(0) \mid \psi(t) \rangle
+\end{equation}
+and Fourier transform to obtain
+\begin{eqnarray}
+\\hat{\mathcal{P}}(\lambda) &=& 2\pi \int_{-\infty}^\infty \mathcal{P}(t) e^{-i\lambda t}dt \\
+\label{ftautocor}
+&=& \sum_{n=1}^d |A_n|^2 \delta(\lambda - \lambda_n).
+\end{eqnarray}
+
+If the Schrodinger equation is integrated in $[0,T]$ with step size $\Delta t$ then the computed spectrum is in the range $[-\pi / \Delta t, \pi / \Delta t]$ with resoultion $\Delta \lambda = 2\pi/\Delta t$. The overriding concern when selecting a timestep is therefore
+\begin{equation}
+\lambda_{max} - \lambda_{min} < \frac{2\pi}{\Delta t}.
+\end{equation}
+
+If an FFT is used to transform the autocorrelation function into the energy domain it is neccessary to sample $\mathcal{P}(t)$ at all $N$ grid points in the time domain. Note however that the number of nonzeros of $\\hat{\mathcal{P}}(\lambda)$, $d$, is typically much smaller than $N$. In this situation we may take advantage of new techniques in sparse signal processing known collectivly as ``compressed sensing'' allowing us to sample $\mathcal{P}(t)$ at significantly fewer points by replacing the FFT with a convex optimization problem.
+
+\subsection{Compressed sensing}
+
+Dammit summarize this later
+
+\section{Method}
+
+We propose propagation of $\psi(t)$ via a randomized time stepping scheme. Given a division of $[0,T]$ into $N$ points spaced $\Delta t$ apart we draw $M \in \mathcal{O}(d \log(N))$ points uniformly at random where $\psi(t)$ will be evaluated. Denote by $\Delta t_n$ the spacing between the subsampled grid points, our method then proceedes by applying propagators of varying length to $\psi(t)$ and recording $\mathcal{P}(t_n)$ at each iteration. We finally move into the energy domain with $l1$ minimization.
+
+\begin{algorithmic}
+\FOR{$n=1$ to $M$}
+\STATE $\psi(t_n) = e^{-iH\Delta t_n}\psi(t_{n-1})$
+\STATE $\mathcal{P}(t_n) = \int \psi(t_n)\psi^*(0) dx$
+\ENDFOR
+\STATE $\hat{\mathcal{P}}(\lambda) = \min \{ |u|_1 s.t. Ru = \mathcal{P} \}$
+\end{algorithmic}
+where $R$ is an $M \times N$ subsampled DFT matrix. While the $l1$ minimization is less efficient than an FFT we note that since the time-energy conversion is between one dimensional signals the added cost is neglible when compared with the cost of advancing $\psi$.
+
+\subsection{Choice of propagator}
+Accurate computation of $e^{-iH\Delta t}$ for varying $\Delta t$ is neccessary for successful determination of $\mathcal{P}(t)$. We favor approximating $e^{-iHdt}$ via an expansion in Chebyshev polynomials \cite{Aviv1984} as this method provides sufficient accuracy and robustness to demonstrate our method. Specifically,
 $$
-e^{-iHdt} = \sum_{k=0}^K a_k \phi_k (-iHdt).
+e^{-iHdt} = \sum_{k=0}^K a_k \rho_k (-iHdt).
 $$
-where $\phi_k(\omega) = T_k(-i\omega)$, $\omega \in [-i,i]$ are the complex Chebyshev polynomials. To understand bounds on $K$ we consider the problem of approximating $e^z$ for $z \in [i \lambda_{min} dt, i \lambda_{max} dt]$. Introduce notation
+where $\rho_k(\omega) = T_k(-i\omega)$, $\omega \in [-i,i]$ are the complex Chebyshev polynomials. To understand bounds on $K$ we consider the problem of approximating $e^z$ for $z \in [i \lambda_{min} dt, i \lambda_{max} dt]$. Introduce notation
 $$
 R = \frac{dt}{2}(\lambda_{max} - \lambda_{min})
 $$
@@ -43,16 +103,11 @@ $$
 And write
 \begin{eqnarray}
 e^{z} & = & e^{i(R+G)}e^{R\omega} \\
-& = & e^{i(R+G)}\sum_{k=0}^K C_k J_k(R) \phi_k(\omega)
+& = & e^{i(R+G)}\sum_{k=0}^K C_k J_k(R) \rho_k(\omega)
 \end{eqnarray}
 where $C_k \in \{1,2 \} $. Note that the Bessel functions of the first kind, $J_k(R)$ vanish for $k>R$ and almost never vanish for $k<R$. We therefore take $K= \alpha R$ with $\alpha >1$ to ensure convergence of the series.
 
 
-\section{Implications for different timestepping schemes}
-
-
-
-%\includegraphics[width=6in]{bessel.eps}
 
 
 
