@@ -6,7 +6,9 @@ close all;clear all;clc;
 % Apply e^(lap + V) over a timestep dt
 
 n = 512; % number of divisions of x (should be even!!)
+dx = 0.0825; %Feit..
 L = 48;
+L = n*dx; %Feit
 
 x = linspace(-L/2, L/2, n);
 dx = median(diff(x))
@@ -31,18 +33,28 @@ Nt = ceil(tmax/dt);
 %V = zeros(size(x));
 %V = .7*(x<-L/3) + .8*(x>L/3);
 %V = (2*x).^2;
-V = 2.8*(x< -L/16) + 2.8*(x > L/16);
-V = V';
+%V = 2.8*(x< -L/16) + 2.8*(x > L/16);
+%V = V';
 
+% Feit
+k0 = -132.7074997;
+k2 = 7;
+k3 = 0.5;
+k4 = 1;
+x1 = 3.813;
+x2 = -4.112;
+V = (k0 - k2*x.^2 + k3*x.^3 + k4*x.^4).*(x<x1).*(x2<x);
+
+V = V'/10;
 
 % Wtf?
 M = 25;
 
 %animation capture setup
-%fig1 = figure(1);
-%fps = 30;
-%axis([0, L, 0, 1]);
-%aviobj = avifile('swe1d3.avi', 'FPS', fps);
+% fig1 = figure(1);
+% fps = 30;
+% axis([0, L, 0, 1]);
+% aviobj = avifile('swe1d3.avi', 'FPS', fps);
 
 dE = (pi^2)/(2*M*dx^2) + max(V) - min(V)
 maxE = (pi^2)/(2*M*dx^2) + max(V)
@@ -53,10 +65,15 @@ k = -n/2:(n/2-1);
 k = k*2*pi/(eLL);
 k = fftshift(k)';
 
-
 %psi0 = u;
 %psi0 = exp(-((x-3)/.25).^2);
-psi0 = exp(-(5*(x-.7)).^2);
+%psi0 = exp(-(5*(x-.7)).^2);
+
+%Define initial wavefunction
+a = 1.9; % shift
+sigmah = 0.87; % spread
+psi0 = exp(-((x-a).^2)/(2*sigmah^2)) + exp(-((x+a).^2)/(2*sigmah^2));
+
 psi0 = psi0';
 I = trapz(x,psi0.*conj(psi0));
 psi0 = psi0 / sqrt(I);
@@ -66,7 +83,7 @@ Hnormspec = inline( '(2/dE)*((-1/(2*M))* specdiff(Phi,x) + V.*Phi) - (1+2*minE/d
 nexttenjays = 1:.3:1.5;
 
 %set up a randomized time grid
-num_samples = ceil(Nt/2);
+num_samples = ceil(Nt/8.1);
 stream = RandStream('mrg32k3a');
 sample_points = sort(unique([1 randsample(stream,1:Nt, num_samples)]));
 num_samples = length(sample_points);
@@ -109,18 +126,18 @@ for nrn = 2:length(sample_points)
     psis(:,nrn) = chebsum;
     
     %% ploting
-    
-%     plot(x,V,'color','g','linewidth',2);
-%     hold on
-%     plot(x,real(chebsum),'--','color','r')
-%     plot(x,imag(chebsum),'--','color','b')
-%     pdf = chebsum.*conj(chebsum);
-%     plot(x,pdf,'-','linewidth',1,'color','k','linewidth',2);
-%     axis([min(x), max(x), -1, 4]);
-%     %axis off
-%     hold off
-%     F = getframe(fig1);
-%     aviobj = addframe(aviobj,F);
+%     
+%      plot(x,V,'color','g','linewidth',2);
+%      hold on
+%      plot(x,real(chebsum),'--','color','r')
+%      plot(x,imag(chebsum),'--','color','b')
+%      pdf = chebsum.*conj(chebsum);
+%      plot(x,pdf,'-','linewidth',1,'color','k','linewidth',2);
+%      axis([min(x), max(x), -1, 4]);
+%      %axis off
+%      hold off
+%      F = getframe(fig1);
+%      aviobj = addframe(aviobj,F);
     
     % record the autocorrelation...
     Pt(nrn) = trapz(x,chebsum.*conj(psi0));

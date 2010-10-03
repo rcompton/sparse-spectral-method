@@ -18,7 +18,7 @@ tmax = 5*fps;
 
 %each frame is 1 unit of time.
 %for a chebyshev video you'll want 1 (or less) steps per frame
-steps = 500; % steps calculated per frame dt < .25*dx^2 ?Depends on M
+steps = 315; % steps calculated per frame dt < .25*dx^2 ?Depends on M
 dt = 1 / steps; %time step, unstable at 1/200 with SOD!
 
 %Parameters and initial consditions
@@ -105,8 +105,7 @@ while t <= tmax
     %Hu = (-1/(2*M))*ifft(-(k.^2).*fft(u));
     %Hu = Hu + V.*u;
     
-    Hu = Hspec(M,V,k,u);
-    %Hu = Hnormspec(M,V,dE,minE,k,dx,u);
+    Hu = H(M,V,k,u);
     
     u = unm1 - 2i*dt*Hu;
     un = u;
