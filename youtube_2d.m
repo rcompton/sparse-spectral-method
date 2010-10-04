@@ -59,13 +59,18 @@ H = inline( '(-1/(2*M))*4*del2(Phi,dx,dx) + V.*Phi','M', 'V', 'dx', 'Phi');
 k = -n/2:(n/2-1);
 k = k.*pi./L;
 k = fftshift(k);
-
 [kk ll] = meshgrid( -n/2:(n/2-1), -n/2:(n/2-1)); % pi/L is dk
 kk = (2*pi/L)*fftshift(kk);
 ll = (2*pi/L)*fftshift(ll);
 
-%
+% Differencing functions
+% for normalized H you need to estimate minE etc.
 Hspec = inline( '(-1/(2*M))*ifft2(-(kk.^2 +ll.^2).*fft2(Phi)) + V.*Phi','M','V','kk','ll','Phi');
+dE = (pi^2)/(2*M*dx^2) + max(V) - min(V)
+maxE = (pi^2)/(2*M*dx^2) + max(V)
+minE = min(V)
+Hnormspec = inline( '(2/dE)*((-1/(2*M))* ifft2(-(kk.^2 +ll.^2).*fft2(Phi)) + V.*Phi) - (1+2*minE/dE).*Phi','M', 'V','dE','minE','kk','ll','Phi');
+
 
 %check it, the kk and ll
 %close all;
@@ -83,75 +88,60 @@ Pt = zeros(1,ceil(tmax/dt));
 %Euler to get u1
 unm1 = psi0;
 un = psi0 - 1i*dt*H(M,V,dx,unm1);
-%un = u - 1i*dt*Hnormspec(M,V,dE,minE,k,dx,unm1);
+%un = u - 1i*dt*Hnormspec(M,V,dE,minE,kk,ll,unm1);
 
 
-counter = 1;
+% Store them all.
+NPt = ceil(tmax/dt);
+psis = zeros(n,n,NPt);
+psis(:,:,1) = psi0;
+
 t=0;
-while t <= tmax
-    %ut = -1i*((-1/(2*M))*4*del2(u,dx) +V.*u); % i*a * u_xx + i*V*u
-    %ut = -1i*H(M,V,dx,u);
-    %u = u + ut * dt; %Euler's method
+for nrn=2:NPt
+    dts(nrn) = dt;
+    % SOD Fourier method.
+%     u = unm1 - 2i*dt*Hspec(M,V,kk,ll,un);
+%     un = u;
+%     unm1 = un;
     
-    %u = unm1 - 2i*dt*H(M,V,dx,un); %SOD
-    %u = unm1 - 2i*dt*Hspec(M,V,dx,un); %SOD Fourier
-    %
-    %SOD without inline function.
-    %Hu = (-1/(2*M))*([0 0 u] - 2*[0 u 0] + [u 0 0])/(dx^2);
-    %Hu = Hu(2:end-1) + V.*u;
+    % Do a chebystep
+    %make maxk Tkpsis
+    Tkpsis = zeros(n,n,100);
+    Tkpsis(:,:,1) = psis(:,:,nrn-1);
+    Tkpsis(:,:,2) = Hnormspec(M,V,dE,minE,kk,ll,psis(:,:,nrn-1));
+    kunt = 2; nexttenjays = 1:.3:1.5;
+    while max( abs(besselj(kunt,dE*dts(nrn-1)*nexttenjays)) ) > 1e-6
+        kunt = kunt+1;
+        %Tkpsis(:,k) = 2*Hnorm(M,V,dE,minE,dx,Tkpsis(:,k-1)) - Tkpsis(:,k-2);
+        Tkpsis(:,:,kunt) = 2*Hnormspec(M,V,dE,minE,kk,ll,Tkpsis(:,:,kunt-1)) - Tkpsis(:,:,kunt-2);
+    end
     
-    %Fourier method (better)
-    %Hu = (-1/(2*M))*ifft(-(k.^2).*fft(u));
-    %Hu = Hu + V.*u;
+    %make the sum
+    chebsum = besselj(0,dts(nrn-1)*dE)*Tkpsis(:,:,1);
+    chebsum = chebsum + -2i*besselj(1,dts(nrn-1)*dE)*Tkpsis(:,:,2);
+    for chebkunt=2:kunt-1
+        chebsum = chebsum + 2*((-1i)^chebkunt)*besselj(chebkunt,dts(nrn-1)*dE)*Tkpsis(:,:,chebkunt+1);
+    end
     
-    %Hu = H(M,V,dx,un);
-    Hu = Hspec(M,V,kk,ll,un);
+    psis(:,:,nrn) = chebsum;
     
-    u = unm1 - 2i*dt*Hu;
-    un = u;
-    unm1 = un;
-    
-    if mod(counter,33)==0
+    % Plotting
+    if mod(nrn,33)==0
         plot3(xx,yy,V,'r.');
         hold on;
-        surf(xx,yy,abs(u));
+        surf(xx,yy,abs(chebsum));
         %pause(.01);
         hold off;
         F = getframe(figgn);
         aviobj = addframe(aviobj,F);
+        tmax
+        t
     end
     
-    %cross fingers
-    %u = chebystep(M,dx,L,V,dt,u,true);
-    %      if mod(steps,700)==0
-    %          u = chebystep(M,dx,V,dt,u,true);
-    %      else
-    %          u = chebystep(M,dx,V,dt,u,false);
-    %      end
-    %
-    
-    % plot u, V, pdf
-    %     f = mod(f+1, steps/5);
-    %     if f==1
-    %         plot(x,V,'color','g','linewidth',2);
-    %         hold on
-    %         plot(x,real(u),'--','color','r')
-    %         plot(x,imag(u),'--','color','b')
-    %         pdf = u.*conj(u);
-    %         plot(x,pdf,'-','linewidth',1,'color','k','linewidth',2);
-    %         axis([min(x), max(x), -1, 4]);
-    %         %axis off
-    %         hold off
-    %         pause(.0001)
-    %         F = getframe(fig1);
-    %         aviobj = addframe(aviobj,F);
-    %     end
-    
-    t = t + dt
-    norm(u);
-    derp = u.*conj(psi0);
-    Pt(counter) = sum(derp(:))*dx*dy;
-    counter = counter + 1;
+    t = t+dt;
+    %norm(chebsum);
+    derp = chebsum.*conj(psi0);
+    Pt(nrn) = sum(derp(:))*dx*dy;
 end
 
 close(figgn);
