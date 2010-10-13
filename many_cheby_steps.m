@@ -7,16 +7,14 @@ close all;clear all;clc;
 
 n = 512; % number of divisions of x (should be even!!)
 dx = 0.0825; %Feit..
-L = 48;
 L = n*dx; %Feit
 
 x = linspace(-L/2, L/2, n);
 dx = median(diff(x))
 
-
-dt = .5;
-tmax = 1941;
-Nt = ceil(tmax/dt);
+dt = 1.25;
+Nt = 2^11;
+tmax = Nt*dt;
 
 % re = 3.2889;
 % De = 0.01688;
@@ -31,9 +29,9 @@ Nt = ceil(tmax/dt);
 
 
 %V = zeros(size(x));
-%V = .7*(x<-L/3) + .8*(x>L/3);
+%V = .7*(x < -L/16) + .8*(x > L/16);
 %V = (2*x).^2;
-%V = 2.8*(x< -L/16) + 2.8*(x > L/16);
+%V = 128*(x< -L/8) + 128*(x > L/8);
 %V = V';
 
 % Feit
@@ -44,17 +42,16 @@ k4 = 1;
 x1 = 3.813;
 x2 = -4.112;
 V = (k0 - k2*x.^2 + k3*x.^3 + k4*x.^4).*(x<x1).*(x2<x);
-
-V = V'/10;
+V = V'/100;
 
 % Wtf?
-M = 25;
+M = 6;
 
 %animation capture setup
-% fig1 = figure(1);
-% fps = 30;
-% axis([0, L, 0, 1]);
-% aviobj = avifile('swe1d3.avi', 'FPS', fps);
+fig1 = figure(1);
+fps = 30;
+axis([0, L, 0, 1]);
+aviobj = avifile('swe1d3.avi', 'FPS', fps);
 
 dE = (pi^2)/(2*M*dx^2) + max(V) - min(V)
 maxE = (pi^2)/(2*M*dx^2) + max(V)
@@ -71,7 +68,7 @@ k = fftshift(k)';
 
 %Define initial wavefunction
 a = 1.9; % shift
-sigmah = 0.87; % spread
+sigmah = 0.37; % spread
 psi0 = exp(-((x-a).^2)/(2*sigmah^2)) + exp(-((x+a).^2)/(2*sigmah^2));
 
 psi0 = psi0';
@@ -83,7 +80,7 @@ Hnormspec = inline( '(2/dE)*((-1/(2*M))* specdiff(Phi,x) + V.*Phi) - (1+2*minE/d
 nexttenjays = 1:.3:1.5;
 
 %set up a randomized time grid
-num_samples = ceil(Nt/8.1);
+num_samples = ceil(Nt/4.0);
 stream = RandStream('mrg32k3a');
 sample_points = sort(unique([1 randsample(stream,1:Nt, num_samples)]));
 num_samples = length(sample_points);
@@ -95,8 +92,8 @@ dts = diff(ts);
 psis = zeros(n,Nt);
 psis(:,1) = psi0;
 %for nrn = 2:Nt
-for nrn = 2:length(sample_points) 
-
+for nrn = 2:length(sample_points)
+    
     %% Do a chebystep
     %make maxk Tkpsis
     Tkpsis = zeros(n,100);
@@ -110,11 +107,9 @@ for nrn = 2:length(sample_points)
         Tkpsis(:,kunt) = 2*Hnormspec(M,V,dE,minE,k,dx,x,Tkpsis(:,kunt-1)) - Tkpsis(:,kunt-2);
     end
     
-    if mod(nrn,37)==0
-        fprintf('number of cheby terms: %f \n',kunt);
-        fprintf('size of this step: %f \n',dts(nrn-1));
-        fprintf('percentage of computation done: %f \n', nrn/length(sample_points));
-    end
+    fprintf('number of cheby terms: %f \n',kunt);
+    fprintf('size of this step: %f \n',dts(nrn-1));
+    fprintf('percentage of computation done: %f \n', nrn/length(sample_points));
     
     %make the sum
     chebsum = besselj(0,dts(nrn-1)*dE)*Tkpsis(:,1);
@@ -126,31 +121,28 @@ for nrn = 2:length(sample_points)
     psis(:,nrn) = chebsum;
     
     %% ploting
-%     
-%      plot(x,V,'color','g','linewidth',2);
-%      hold on
-%      plot(x,real(chebsum),'--','color','r')
-%      plot(x,imag(chebsum),'--','color','b')
-%      pdf = chebsum.*conj(chebsum);
-%      plot(x,pdf,'-','linewidth',1,'color','k','linewidth',2);
-%      axis([min(x), max(x), -1, 4]);
-%      %axis off
-%      hold off
-%      F = getframe(fig1);
-%      aviobj = addframe(aviobj,F);
+    %
     
+    plot(x,V,'color','g','linewidth',2);
+    hold on
+    plot(x,real(chebsum),'--','color','r')
+    plot(x,imag(chebsum),'--','color','b')
+    pdf = chebsum.*conj(chebsum);
+    plot(x,pdf,'-','linewidth',1,'color','k','linewidth',2);
+    axis([min(x), max(x), min(V)*1.2, 1]);
+    %axis off
+    hold off
+    F = getframe(fig1);
+    aviobj = addframe(aviobj,F);
+       
     % record the autocorrelation...
     Pt(nrn) = trapz(x,chebsum.*conj(psi0));
     
-    
-    
     %check for norm conservation
-    %trapz(x,psis(:,nrn).*conj(psis(:,nrn)));
-    
-
+    %trapz(x,psis(:,nrn).*conj(psis(:,nrn)));  
 end
-%close(fig1);
-%aviobj = close(aviobj);
+close(fig1);
+aviobj = close(aviobj);
 
 
 %% Form PE and get the spectrum...
@@ -209,6 +201,8 @@ figure()
 hold on;
 %plot(abs(Pe));
 plot(abs(uHat_approx),'r--');
+
+[peaks locs] = findpeaks(abs(uHat_approx),'MINPEAKHEIGHT', 1);
 
 %% Neat picture
 figure();

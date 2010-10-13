@@ -1,9 +1,11 @@
-\documentclass[12pt]{amsart}
+\documentclass[10pt]{amsart}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
 \usepackage{graphicx}
 \usepackage{algorithmic}
+\usepackage{multicol}
+
 
 \newcommand{\R}{\mathbb{R}}
 
@@ -21,6 +23,7 @@
 
 \begin{document}
 \maketitle
+
 
 \section{Introduction}
 
@@ -66,11 +69,71 @@ If the Schrodinger equation is integrated in $[0,T]$ with step size $\Delta t$ t
 
 If an FFT is used to transform the autocorrelation function into the energy domain it is neccessary to sample $\mathcal{P}(t)$ at all $N$ grid points in the time domain. Note however that the number of nonzeros of $\hat{\mathcal{P}}(\lambda)$, $d$, is typically much smaller than $N$. In this situation we may take advantage of new techniques in sparse signal processing known collectively as ``compressed sensing'' allowing us to sample $\mathcal{P}(t)$ at significantly fewer points by replacing the FFT with a convex optimization problem.
 
+
+\begin{figure}
+\begin{center}
+\includegraphics[width=2in]{graph110.eps}
+\includegraphics[width=2in]{graph1584.eps}
+\includegraphics[width=2in]{graph3256.eps}
+\includegraphics[width=2in]{graph3784.eps}
+\includegraphics[width=2in]{graph4488.eps}
+\caption{Snapshots of evolution of $\psi(\vec{x},t)$ in a 2D box. Traditional spectral methods extract spectral information by correlating the data at many times with $\psi(\vec{x},0$, our approach provides the same information when significantly less time data is collected.}
+\end{center}
+\end{figure}
+
 \subsection{Compressed sensing}
 
-Generic summary of compressed sensing, Bregman, l1, etc.
+
+In this section we review the technique of Bregman iteration for $l1$ minimization. Consider the general constrained minimization problem
+\begin{equation}\label{constrained}
+\min |u|_1 \text{ s.t } Au=b
+\end{equation}
+for $A\in \R^{m \times n}$. For a large penalty parameter $\lambda$ we associate an unconstrained optimization to (\ref{constrained})
+\begin{equation}\label{unconstrained}
+\min |u|_1 + \lambda ||Au-b||_2
+\end{equation}
+for large $\lambda$, say $\lambda = 10^{10}$, (\ref{unconstrained}) more closely approximates the solution to (\ref{constrained}) at the expense of becoming numerically ill conditioned. The achievement of Bregman iteration is that it converts (\ref{constrained}) into a sequence of unconstrained small $\lambda$ problems in a way that has guarenteed convergence after finitely many steps. Introduce the Bregman divergence
+\begin{equation}
+D_{J}^p(u,v) = J(u) - J(v)- <p,u-v>
+\end{equation}
+where $p\in \partial J$, the subgradient of $J$. Bregman divergence is similiar to a true distance in that it satisfies both $D_J^p(u,v) \geq 0$, $D_J^p(u,v) + D_J^p(w,v)$ for $w = \lambda u + (1-\lambda)v$ yet is not a true distance in that it fails to satisfy both symmetry and the triangle inequality. Using this distance we iteratively minimize
+\begin{eqnarray}
+u^{k+1} &=& \min_u D_J^p(u,u^k) + \frac{\lambda}{2}||Au - b||_2^2 \\
+&=& \min_u J(u) - <p^k, u-u^k> +  \frac{\lambda}{2}||Au - b||_2^2 \\
+p^{k+1} &=& p^k - \lambda A^T (Au^{k+1} - b)
+\end{eqnarray}
+which is the same as
+\begin{eqnarray}
+u^{k+1} &=& \min_u J(u) + \frac{\lambda}{2}||Au - b^k||_2^2 \\
+b^{k+1} &=& b^k + b -Au^{k+1}
+\end{eqnarray}
+It can be shown \cite{Osher2005} that
+\begin{equation}
+\lim_{k\rightarrow \infty} A u^k = b
+\end{equation}
+In other words, the iterates $u^k$ become arbitrarily close to the true solution to (\ref{constrained}) for large $k$ thus reducing the constrained optimization to a sequence of unconstrained problems. The unconstrained problems may be solved by either operator splitting or linearization.
+
+\subsection{compressed sense}
+Our key result rests on the fact that the time-energy conversion may be accomplished with much fewer data points than Feit had originally advocated. That this is possibile is the central result of ``compressed sensing'' \cite{Candes.2006} which we breifly review in this section.
+
+Our target data is contained in the length signal $\hat{\mathcal{P}}(\lambda) = \sum_{n=1}^d \delta(\lambda_n - \lambda)$. If we discretize $\hat{\mathcal{P}}(\lambda)$ at $N$ points the Nyquist-Shannon sampling theorem asserts that the time domain autocorrelation function $\mathcal{P}(t)$ must be sampled at $\frac{N}{2}$ points if one is to obtain the $d$ peaks from an FFT. Compressed sensing exploits the fact that $d << N$ by replacing the FFT with a convex optimization allowing us to extract energy levels from $cd\log(\frac{N}{d})$ randomly located samples of $\mathcal{P}(t)$ where $c$ is a small constant. Explicitly, we solve
+\begin{equation}\label{cs}
+\min |u|_1 \text{ s.t. } Ru = \mathcal{P}
+\end{equation}
+where $R$ is a randomly subsampled DFT matrix. The solution to the $l1$ optimization problem (\ref{cs}) is equivalent to the associated NP-hard $l0$ optmization with overwhelmingly high probability \cite{Candes2006}.
+
+We physically interpret the autocorrelation function
+\begin{equation}
+\mathcal{P}(t) = \sum |A_n|^2 e^{-i\lambda_nt}
+\end{equation}
+as a coherent superposistion of components with energy $\lambda_nt$. Resolving the energy levels when many different superposistions have been calculated is possible via Fourier transform, however only a few $\lambda_n$ are interesting and extraction of these energies from the coherent state data is now possible from much fewer evaluations of the autocorrletation functions. 
+
+We remark that sparse signal processing has been applied to coherent state representations in the past with great success. The MP/SOFT framework for multiparticle dynamics makes use of the matching pursuit algorithm over an overcomplete dictionary of coherent states \cite{Wu2003} \cite{Wu2004}.
+
 
 \section{Method}
+
+\subsection{ A randomized timestepping scheme}
 
 We propose propagation of $\psi(t)$ via a randomized time stepping scheme. Given a division of $[0,T]$ into $N$ points spaced $\Delta t$ apart we draw $M \in \mathcal{O}(d \log(N))$ points uniformly at random where $\psi(t)$ will be evaluated. Denote by $\Delta t_n$ the spacing between the subsamples grid points, our method then proceeds by applying propagators of varying stepsizes to $\psi(t)$ and recording $\mathcal{P}(t_n)$ at each iteration. We finally move into the energy domain with $l1$ minimization.
 
@@ -80,8 +143,11 @@ We propose propagation of $\psi(t)$ via a randomized time stepping scheme. Given
 \STATE $\mathcal{P}(t_n) = \int \psi(t_n)\psi^*(0) dx$
 \ENDFOR
 \STATE $\hat{\mathcal{P}}(\lambda) = \min \{ |u|_1 s.t. Ru = \mathcal{P} \}$
-\end{algorithmic}
+matrix\end{algorithmic}
 where $R$ is an $M \times N$ subsampled DFT matrix. While the $l1$ minimization is less efficient than an FFT we note that since the time-energy conversion is between one dimensional signals the added cost is negligible when compared with the cost of advancing $\psi(t)$.
+
+
+
 
 \subsection{Choice of propagator}
 Accurate computation of $e^{-iH\Delta t}$ for varying $\Delta t$ is necessary for successful determination of $\mathcal{P}(t)$. We favor approximating $e^{-iHdt}$ via an expansion in Chebyshev polynomials \cite{Aviv1984} as this method provides sufficient accuracy and robustness to demonstrate our method. Specifically,
@@ -130,13 +196,26 @@ With a final time of 1941 (atomic units?) and $\Delta t = 0.5$ we get 3882 point
 
 
 \begin{center}
-\begin{tabular}{ l | r  }
+\begin{tabular}{ l |c| r  }
   \hline                       
-  $\#$ subsampled timesteps & relative error \\ \hline
-   1941 & 2.7109e-4 \\
-   971 & .0062 \\
-   647 & .0138 \\
-   486 &  .0234 \\
+  $\#$ subsampled timesteps & relative error &peak posistion error\\ \hline
+   1941 & 2.7109e-4 & 0\\
+   971 & .0062 & 0\\
+   647 & .0138 & 0\\
+   486 &  .0234 & 0\\
+  \hline  
+\end{tabular}
+\end{center}
+
+We run our experiment again on the double well potential originally studied by Feit \cite{FEIT1982}. We take $V(x) = k_0 - k_2x^2 + k_3x^3 + k_4x^4$ with $k_0=-132.707$, $k_2=7$, $k_3=0.5$, $k_4=1$, $x_1=3.813$, $x_2=-4.112$ and truncate the potential to be 0 outside of $[x1,x2]$. Our spatial discretization is $dx=0.0825$ across 512 points. We take our smallest allowable timestep as $dt=1.25$ towards a final time of $T=2560$. We randomly downsample the range by factors of 2 and 4 below.
+
+\begin{center}
+\begin{tabular}{ l | c | r  }
+  \hline                       
+  $\#$ subsampled timesteps & relative error & peak posistion error\\ \hline
+   2048 & 2.7109e-4 & 0\\
+   1024 & .0062 & 0\\
+   512 & .0138 & 0\\
   \hline  
 \end{tabular}
 \end{center}
@@ -144,8 +223,10 @@ With a final time of 1941 (atomic units?) and $\Delta t = 0.5$ we get 3882 point
 
 Here we plot $\hat{\mathcal{P}}(\lambda)$ constructed from the full data using an FFT in blue and the $l1$ reconstruction in red. Interestingly, the reconstructed data tends to favor a sparser solution and may in fact be closer to the ground truth.
 
-\includegraphics{t1941.eps}
-\includegraphics{t1941_zoom.eps}
+Here we plot $\hat{\mathcal{P}}(\lambda)$ constructed from the full data using an FFT in blue and the $l1$ reconstruction in red. Interestingly, the reconstructed data tends to favor a sparser solution and may in fact be closer to the ground truth.
+
+\includegraphics[width=3in]{t1941.eps}
+\includegraphics[width=3in]{t1941_zoom.eps}
 
 
 \bibliographystyle{plain}
