@@ -80,7 +80,7 @@ Hnormspec = inline( '(2/dE)*((-1/(2*M))* specdiff(Phi,x) + V.*Phi) - (1+2*minE/d
 nexttenjays = 1:.3:1.5;
 
 %set up a randomized time grid
-num_samples = ceil(Nt/4.0);
+num_samples = ceil(Nt/8.0);
 stream = RandStream('mrg32k3a');
 sample_points = sort(unique([1 randsample(stream,1:Nt, num_samples)]));
 num_samples = length(sample_points);

@@ -1,4 +1,4 @@
-\documentclass[10pt]{amsart}
+\documentclass[11pt]{amsart}
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{amsthm}
@@ -17,43 +17,53 @@
 \newtheorem{defn}{Definition}
 
 
-\title{Notes on sparse spectral method}
-\date{Sep 25, 2010}
+\title{A Sparse Spectral Method for Hamiltonian Eigensystems}
+\author{Ryan Compton, Chris Anderson}
+\date{Oct 13, 2010}
 
 
 \begin{document}
-\maketitle
 
+\begin{abstract}
+We propose a sparse spectral method for Hamiltonian eigensystems.
+\end{abstract}
+
+\maketitle
 
 \section{Introduction}
 
-The spectral method is a fundamental tool for determining eigenstates of Hamiltonian systems. Key to the method is an FFT of the autocorrelation function, $\mathcal{P}(t)$, of a time dependent wavefunction into the energy domain where relevant spectral information may be obtained via line fitting techniques. Reliable determination of the eigenstates thus depends on knowledge of the autocorrelation function at a high sample rate over a long time.
+The use of signal processing to extract spectral information of quantum mechanical systems from time dependent simulations has proven to be an efficient and robust methodology for nearly thirty years \cite{Univcrsity1994}. First advocated by Feit, Fleck and Steiger in 1982 spectral methods have become fundamental in the development of many practical quantum mechanical algorithms \cite{Feit1983a}\cite{Maraner1991}.
 
-The accuracy of the energy domain representation limited by the uncertainty principle in two ways. Highly resolved energy domain signals require long time propagations. Explicitly, the lower bound on the density of states that can be resolved is $\frac{2 \pi}{T}$ where $T$ is the total propagation time. In the situation where one desires eigenvalues in a specified range this uncertainty principle has been overcome by Neuhauser with the Filter Diagonalization method \cite{Wall1995} \cite{Neuhauser1994} \cite{Mandelshtam2001}.
+Key to the spectral method is an FFT of the autocorrelation function, $\mathcal{P}(t)$, of a time dependent wavefunction, $\psi(\vec{x},t)$, into the energy domain where eigenvalues of the Hamiltonian may be easily found. Reliable determination of the eigenvalues depends on a detailed energy domain representation and thus requires knowledge of the autocorrelation function at a high sample rate over a long time \cite{Feit1983}.
 
-On the other hand the autocorrelation function must be sampled at the Nyquist rate $ \Delta t < \pi / \Delta E $ to avoid aliasing errors. This is traditionally dealt with by truncating the potential function appropriately and advancing the time dependent wave function over short time steps. In this work we overcome this restriction by exploiting the spare structure of $\hat{\mathcal{P}}(\lambda)$ and making use of ideas from the theory of compressed sensing \cite{Candes2006}.
+The accuracy of the energy domain representation, $\hat{\mathcal{P}}(\lambda)$, is limited by the uncertainty principle in two ways. Highly resolved energy domain signals require $\mathcal{P}(t)$ be known for large $t$ while small $\Delta t$ is required if one is to avoid aliasing errors. Explicitly, the lower bound on the density of states that can be resolved from a signal $\mathcal{P}(t)$ is $\frac{2\pi}{T}$ where $T$ is the total propagation time while an upper bound on the timestep $\Delta t$ is controlled as $\Delta t < \frac{2\pi}{\Delta E}$ where $\Delta E$ is the spectral radius of the Hamiltonian \cite{Briggs1995}.
+
+Overcoming the large $T$ uncertainty principle and allowing for short propagation times while still resolving closely spaced eigenvalues is the achievement of the Filter Diagonalization method introduced by Neuhauser in 1990 \cite{Wall1995} \cite{Neuhauser1994} \cite{Mandelshtam2001} \cite{Neuhauser1990}.
+
+The small $\Delta t$ bound is traditionally dealt with by truncating the potential above some cutoff value and advancing $\psi$ over a uniform grid spaced by $\frac{1}{\Delta E_{cutoff}}$. The purpose of this work is to avoid the small $\Delta t$ bound by exploiting the spare structure of $\hat{\mathcal{P}}(\lambda)$ and making use of ideas from the theory of compressed sensing \cite{Candes2006}.
 
 Specifically, we propose that the energy domain representation of the autocorrelation function
 \begin{equation}
-\hat{R}(\lambda) = \sum_n^d |A_n|^2 \delta(\lambda-\lambda_n)
+\hat{\mathcal{P}}(\lambda) = \sum_{n=1}^d |A_n|^2 \delta(\lambda-\lambda_n)
 \end{equation}
-be modeled as a sparse signal which implies that it may be recovered from sparse random measurements of $R(t)$. In particular, our results guarantee that the eigenvalues may be exactly obtained with overwhelmingly high probability provided that the number of samples of the autocorrelation function is of cardinality $\mathcal{O}(d \log(N))$ where $N$ is the number of points in our arrays and $d$ is the rank of our operator.
+be modeled as a sparse signal which implies that it may be recovered from sparse random measurements of $\mathcal{P}(t)$. In particular, our results guarantee that the eigenvalues may be obtained exactly with overwhelmingly high probability provided that the number of samples of the autocorrelation function is of cardinality $\mathcal{O}(d \log(N))$ where $N=\frac{1}{\Delta t_{small}}$ is the number of points in our arrays and $d$ is the rank of our operator.
 
-\section{Review of the spectral method}
+\section{Method}
 
-We are interested in solutions to
+We begin with a review of the spectral method. We are interested in solutions to the time independent eigenvalue problem
 \begin{equation}
 H \psi = \lambda \psi
 \end{equation}
 for this we consider solutions to the time dependent Schrodinger equation
 \begin{eqnarray}
-\psi(t) &=& e^{-iHt}\psi(0) \\
+\psi(t) &=& e^{-iHt}\psi_0 \\
 &=& e^{-iHt} \sum_{n=1}^d A_n \phi_n \\ \label{timdepcoh}
 &=& \sum_{n=1}^d A_n e^{-i\lambda_n t} \phi_n
 \end{eqnarray}
-where $\{ \phi_n \}$ are the orthonormal eigenstates at time 0 with eigenvalues $\{ \lambda_n \}$ and $A_n = \langle \phi_n \mid \psi(0) \rangle$. Form the autocorrelation function of $\psi(t)$
+where $\{ \phi_n \}_{n=1}^d$ are the orthonormal eigenstates at time zero with eigenvalues $\lambda_n$ and $A_n = \langle \phi_n \mid \psi_0 \rangle$. Form the autocorrelation function of $\psi(t)$
+
 \begin{equation}\label{autocor}
-\mathcal{P}(t) = \langle \psi(0) \mid \psi(t) \rangle
+\mathcal{P}(t) = \langle \psi_0 \mid \psi(t) \rangle
 \end{equation}
 and Fourier transform to obtain
 \begin{eqnarray}
@@ -62,143 +72,140 @@ and Fourier transform to obtain
 &=& \sum_{n=1}^d |A_n|^2 \delta(\lambda - \lambda_n).
 \end{eqnarray}
 
-If the Schrodinger equation is integrated in $[0,T]$ with step size $\Delta t$ then the computed spectrum is in the range $[-\pi / \Delta t, \pi / \Delta t]$ with resolution $\Delta \lambda = 2\pi/\Delta t$. In order to capture the full spectrum and avoid aliasing errors the overriding concern for timestep selection is therefore
+If the Schrodinger equation is integrated in $[0,T]$ with step size $\Delta t$ then the computed spectrum is in the range $[-\pi / \Delta t, \pi / \Delta t]$ with resolution $\Delta \lambda = 2\pi/T$. Capturing the full spectrum and avoiding aliasing errors enforces 
 \begin{equation}
-\lambda_{max} - \lambda_{min} < \frac{2\pi}{\Delta t}.
+\lambda_{max} - \lambda_{min} < \frac{2\pi}{\Delta t}
 \end{equation}
+as the overriding concern for timestep selection.
 
-If an FFT is used to transform the autocorrelation function into the energy domain it is neccessary to sample $\mathcal{P}(t)$ at all $N$ grid points in the time domain. Note however that the number of nonzeros of $\hat{\mathcal{P}}(\lambda)$, $d$, is typically much smaller than $N$. In this situation we may take advantage of new techniques in sparse signal processing known collectively as ``compressed sensing'' allowing us to sample $\mathcal{P}(t)$ at significantly fewer points by replacing the FFT with a convex optimization problem.
-
+If an FFT is used to transform the autocorrelation function into the energy domain it is neccessary to sample $\mathcal{P}(t)$ at all $N$ grid points in the time domain. Note however that the number of nonzero entries in $\hat{\mathcal{P}}(\lambda)$, $d$, is typically much smaller than $N$ \cite{Chen1996}. In this situation we may take advantage of new techniques in sparse signal processing known collectively as ``compressed sensing'' allowing us to sample $\mathcal{P}(t)$ at significantly fewer points by replacing the FFT with a convex optimization problem \cite{Candes2005}.
 
 \begin{figure}
 \begin{center}
 \includegraphics[width=2in]{graph110.eps}
 \includegraphics[width=2in]{graph1584.eps}
+
+
 \includegraphics[width=2in]{graph3256.eps}
+
+
 \includegraphics[width=2in]{graph3784.eps}
 \includegraphics[width=2in]{graph4488.eps}
-\caption{Snapshots of evolution of $\psi(\vec{x},t)$ in a 2D box. Traditional spectral methods extract spectral information by correlating the data at many times with $\psi(\vec{x},0$, our approach provides the same information when significantly less time data is collected.}
+\caption{Snapshots of evolution of $\psi(\vec{x},t)$ in a 2D box. Traditional spectral methods extract spectral information from $\mathcal{P}(t) = \int \psi(t)\psi_0^*dx$ via the FFT. Our approach obtains the same information via $l1$ minimization when significantly less time data is collected.}
 \end{center}
 \end{figure}
 
 \subsection{Compressed sensing}
 
+Our key result rests on the fact that the time-energy conversion may be accomplished with much fewer data points than Feit had originally advocated. That this is possible is the central result of ``compressed sensing'' \cite{Candes.2006} which we briefly review in this section.
 
-In this section we review the technique of Bregman iteration for $l1$ minimization. Consider the general constrained minimization problem
-\begin{equation}\label{constrained}
-\min |u|_1 \text{ s.t } Au=b
-\end{equation}
-for $A\in \R^{m \times n}$. For a large penalty parameter $\lambda$ we associate an unconstrained optimization to (\ref{constrained})
-\begin{equation}\label{unconstrained}
-\min |u|_1 + \lambda ||Au-b||_2
-\end{equation}
-for large $\lambda$, say $\lambda = 10^{10}$, (\ref{unconstrained}) more closely approximates the solution to (\ref{constrained}) at the expense of becoming numerically ill conditioned. The achievement of Bregman iteration is that it converts (\ref{constrained}) into a sequence of unconstrained small $\lambda$ problems in a way that has guarenteed convergence after finitely many steps. Introduce the Bregman divergence
-\begin{equation}
-D_{J}^p(u,v) = J(u) - J(v)- <p,u-v>
-\end{equation}
-where $p\in \partial J$, the subgradient of $J$. Bregman divergence is similiar to a true distance in that it satisfies both $D_J^p(u,v) \geq 0$, $D_J^p(u,v) + D_J^p(w,v)$ for $w = \lambda u + (1-\lambda)v$ yet is not a true distance in that it fails to satisfy both symmetry and the triangle inequality. Using this distance we iteratively minimize
-\begin{eqnarray}
-u^{k+1} &=& \min_u D_J^p(u,u^k) + \frac{\lambda}{2}||Au - b||_2^2 \\
-&=& \min_u J(u) - <p^k, u-u^k> +  \frac{\lambda}{2}||Au - b||_2^2 \\
-p^{k+1} &=& p^k - \lambda A^T (Au^{k+1} - b)
-\end{eqnarray}
-which is the same as
-\begin{eqnarray}
-u^{k+1} &=& \min_u J(u) + \frac{\lambda}{2}||Au - b^k||_2^2 \\
-b^{k+1} &=& b^k + b -Au^{k+1}
-\end{eqnarray}
-It can be shown \cite{Osher2005} that
-\begin{equation}
-\lim_{k\rightarrow \infty} A u^k = b
-\end{equation}
-In other words, the iterates $u^k$ become arbitrarily close to the true solution to (\ref{constrained}) for large $k$ thus reducing the constrained optimization to a sequence of unconstrained problems. The unconstrained problems may be solved by either operator splitting or linearization.
-
-\subsection{compressed sense}
-Our key result rests on the fact that the time-energy conversion may be accomplished with much fewer data points than Feit had originally advocated. That this is possibile is the central result of ``compressed sensing'' \cite{Candes.2006} which we breifly review in this section.
-
-Our target data is contained in the length signal $\hat{\mathcal{P}}(\lambda) = \sum_{n=1}^d \delta(\lambda_n - \lambda)$. If we discretize $\hat{\mathcal{P}}(\lambda)$ at $N$ points the Nyquist-Shannon sampling theorem asserts that the time domain autocorrelation function $\mathcal{P}(t)$ must be sampled at $\frac{N}{2}$ points if one is to obtain the $d$ peaks from an FFT. Compressed sensing exploits the fact that $d << N$ by replacing the FFT with a convex optimization allowing us to extract energy levels from $cd\log(\frac{N}{d})$ randomly located samples of $\mathcal{P}(t)$ where $c$ is a small constant. Explicitly, we solve
+Our target data is contained in the length $N$ signal $\hat{\mathcal{P}}(\lambda) = \sum_{n=1}^d \delta(\lambda_n - \lambda)$. If we discretize $\hat{\mathcal{P}}(\lambda)$ at $N$ points the Nyquist-Shannon sampling theorem asserts that the time domain autocorrelation function, $\mathcal{P}(t)$, must be sampled at $\frac{N}{2}$ points if one is to obtain the $d$ peaks from an FFT. Compressed sensing exploits the fact that $d << N$ by replacing the FFT with a convex optimization allowing us to extract energy levels from $cd\log(\frac{N}{d})$ randomly located samples of $\mathcal{P}(t)$ where $c$ is a small constant. Explicitly, we solve
 \begin{equation}\label{cs}
-\min |u|_1 \text{ s.t. } Ru = \mathcal{P}
+\min |u|_1 \text{ s.t. } Ru = \mathcal{P}(t_n)
 \end{equation}
-where $R$ is a randomly subsampled DFT matrix. The solution to the $l1$ optimization problem (\ref{cs}) is equivalent to the associated NP-hard $l0$ optmization with overwhelmingly high probability \cite{Candes2006}.
+where $R$ is a randomly subsampled DFT matrix. The solution to the $l1$ optimization problem (\ref{cs}) is equivalent to the associated NP-hard $l0$ optimization with overwhelmingly high probability \cite{Candes2006}.
+
+As a result of this equivalence algorithms for $l1$ minimization have seen a surge in development in recent years with new codes outperforming classical methods by large factors \cite{Goldstein}.
 
 We physically interpret the autocorrelation function
 \begin{equation}
-\mathcal{P}(t) = \sum |A_n|^2 e^{-i\lambda_nt}
+\mathcal{P}(t) = \sum_{n=1}^d |A_n|^2 e^{-i\lambda_nt}
 \end{equation}
-as a coherent superposistion of components with energy $\lambda_nt$. Resolving the energy levels when many different superposistions have been calculated is possible via Fourier transform, however only a few $\lambda_n$ are interesting and extraction of these energies from the coherent state data is now possible from much fewer evaluations of the autocorrletation functions. 
+as a coherent superposition of components with energy $\lambda_nt$ \cite{Chen1996}. Resolving the energy levels when many different superpositions have been calculated is possible via Fourier transform, however only a few $\lambda_n$ are interesting and extraction of these energies from the coherent state data via the proposed method is possible from much fewer evaluations of the autocorrelation function. 
 
-We remark that sparse signal processing has been applied to coherent state representations in the past with great success. The MP/SOFT framework for multiparticle dynamics makes use of the matching pursuit algorithm over an overcomplete dictionary of coherent states \cite{Wu2003} \cite{Wu2004}.
+We remark that sparse signal processing has been applied to coherent state representations in the past with great success. The MP/SOFT framework for multiparticle dynamics makes use of the matching pursuit algorithm \cite{Jie2008} by optimizing over an overcomplete dictionary of coherent states generated by importance sampling Monte Carlo in order to identify a small Hamiltonian system where the eigenvalues can be cheaply found \cite{Wu2003} \cite{Wu2004} \cite{Shalashilin2008}. Our method samples the coherent state data by advancing $\psi$ across a nonuniform grid.
 
+\subsection{A randomized time stepping scheme}
 
-\section{Method}
+We propose propagation of $\psi(t)$ via a randomized time stepping scheme. Given a division of $[0,T]$ into $N$ points spaced $\Delta t$ apart we draw $M \in \mathcal{O}(d \log(N))$ points uniformly at random where $\psi(t)$ will be evaluated. Denote by $\Delta t_n$ the spacing between the subsampled grid points, our method then proceeds by applying propagators of varying step sizes to $\psi(t)$ and recording $\mathcal{P}(t_n)$ at each iteration. We finally move into the energy domain with $l1$ minimization.
 
-\subsection{ A randomized timestepping scheme}
-
-We propose propagation of $\psi(t)$ via a randomized time stepping scheme. Given a division of $[0,T]$ into $N$ points spaced $\Delta t$ apart we draw $M \in \mathcal{O}(d \log(N))$ points uniformly at random where $\psi(t)$ will be evaluated. Denote by $\Delta t_n$ the spacing between the subsamples grid points, our method then proceeds by applying propagators of varying stepsizes to $\psi(t)$ and recording $\mathcal{P}(t_n)$ at each iteration. We finally move into the energy domain with $l1$ minimization.
+\vspace{11pt}
 
 \begin{algorithmic}
 \FOR{$n=1$ to $M$}
 \STATE $\psi(t_n) = e^{-iH\Delta t_n}\psi(t_{n-1})$
-\STATE $\mathcal{P}(t_n) = \int \psi(t_n)\psi^*(0) dx$
+\STATE $\mathcal{P}(t_n) = \int \psi(t_n)\psi^*_0 dx$
 \ENDFOR
 \STATE $\hat{\mathcal{P}}(\lambda) = \min \{ |u|_1 s.t. Ru = \mathcal{P} \}$
-matrix\end{algorithmic}
+\end{algorithmic}
+
+\vspace{11pt}
+
 where $R$ is an $M \times N$ subsampled DFT matrix. While the $l1$ minimization is less efficient than an FFT we note that since the time-energy conversion is between one dimensional signals the added cost is negligible when compared with the cost of advancing $\psi(t)$.
 
+A brief remark is in order here. For the $l1$ minimization to succeed in obtaining the correct signal it is necessary that $R$ satisfy the ``restricted isometry property''\cite{Candes.2006}. This can be guaranteed with high probability provided that our time domain samples are selected uniformly at random \cite{Candes2006}.
 
+When the $t_i$ are drawn uniformly with probability $p$ then $\Delta t_i$ takes on a geometric distribution with parameter $p$. The cumulative distribution function for each $\Delta t_i$ is then
+\begin{equation}
+P(\Delta t_i < k) = 1 - (1-p)^{k+1}
+\end{equation}
+and for a propagation across $M$ points we can estimate the largest timestep using the $M$th order statistic
+\begin{equation}
+P(\max \{\Delta t_i \} < k) = (1 - (1-p)^{k+1})^M
+\end{equation}
 
+For $p=\frac{1}{5}$ and $M=3882$ the probability that all gaps traverse less than $20$ steps is $4.416 \times 10^{-6}$. Advancing $\psi$ through a second order method (eg SOD \cite{Fritz1983}, Strang Splitting \cite{FEIT1982}) will therefore increase the $L^\infty$ error $||\psi_{approx}(t) - \psi_{true}(t)||_\infty$ by a factor of at least $400$ and likely introduce stability problems.
+
+If we are to propagate with an approximate method we must overlay our random grid with a uniformly spaced grid of acceptable step size to avoid the large excursions taken by $\Delta t_i$. Alternatively, we may advance $\psi$ with more expensive yet spectrally accurate methods.
 
 \subsection{Choice of propagator}
-Accurate computation of $e^{-iH\Delta t}$ for varying $\Delta t$ is necessary for successful determination of $\mathcal{P}(t)$. We favor approximating $e^{-iHdt}$ via an expansion in Chebyshev polynomials \cite{Aviv1984} as this method provides sufficient accuracy and robustness to demonstrate our method. Specifically,
-$$
-e^{-iH\Delta t} = \sum_{k=0}^K a_k \rho_k (-iHdt).
-$$
-where $\rho_k(\omega) = T_k(-i\omega)$, $\omega \in [-i,i]$ are the complex Chebyshev polynomials. To understand bounds on $K$ we consider the problem of approximating $e^z$ for $z \in [i \lambda_{min} dt, i \lambda_{max} dt]$. Introduce notation
-$$
-R = \frac{\Delta t}{2}(\lambda_{max} - \lambda_{min})
-$$
 
-$$
-G = \Delta t \lambda_{min}
-$$
+Accurate computation of $e^{-iH\Delta t}$ for varying $\Delta t$ is necessary for successful determination of $\mathcal{P}(t)$. The calculation of $e^{-iH\Delta t}$ is a well studied problem in approximation theory which has been approached by Strang splitting \cite{FEIT1982}, central difference schemes \cite{Fritz1983}, iterative Lanczos reduction \cite{Park1986}, expansion in Hermite, Newton and Faber polynomials \cite{Huang1994}\cite{Univcrsity1994}\cite{Vijay1999} as well as a host of Krylov subspace methods \cite{Moler2003}.
 
-$$
-\omega = \frac{1}{R}(z - i(R+G)),\omega \in [-i,i]
-$$
+We favor calculation of $e^{-iH\Delta t}$ via an expansion in Chebyshev polynomials \cite{Aviv1984}. Expansion in Chebyshev polynomials is a well known technique providing spectral accuracy and well as computational efficiency. It also provides sufficient robustness to advance $\psi(t)$ across our randomized grid. Specifically,
+\begin{equation}
+e^{-iH\Delta t} \approx \sum_{k=0}^K a_k \rho_k (-iH\Delta t).
+\end{equation}
+where $\rho_k(\omega) = T_k(-i\omega)$, $\omega \in [-i,i]$ are the complex Chebyshev polynomials. The Chebyshev polynomials of the first kind $T_k(x)$ are defined by the recurrence
+\begin{eqnarray}
+T_1(x) &=& 1\\
+T_2(x) &=& x\\
+T_k(x) &=& 2xT_{k-1}(x) + T_{k-2}(x)
+\end{eqnarray} 
 
-And write
+To understand bounds on $K$ we consider the problem of approximating $e^z$ for $z \in [i \lambda_{min} \Delta t, i \lambda_{max} \Delta t]$. Introduce notation
+\begin{eqnarray}
+R &=& \frac{\Delta t}{2}(\lambda_{max} - \lambda_{min}) \\
+G &=& \Delta t \lambda_{min} \\
+\omega &=& \frac{1}{R}(z - i(R+G))\\
+\end{eqnarray}
+
+Note that $\omega \in [-i,i]$ and write
 \begin{eqnarray}
 e^{z} & = & e^{i(R+G)}e^{R\omega} \\
 & = & e^{i(R+G)}\sum_{k=0}^K C_k J_k(R) \rho_k(\omega)
 \end{eqnarray}
-where $C_k \in \{1,2 \} $. Note that the Bessel functions of the first kind, $J_k(R)$ vanish for $k>R$ and almost never vanish for $k<R$. We therefore take $K= \alpha R$ with $\alpha >1$ to ensure convergence of the series.
+where $C_k \in \{1,2 \} $. Note that the Bessel functions of the first kind, $J_k(R)$, are driven exponentially towards zero for $k>R$ yet vanish only on a set of measure zero for $k<R$. We therefore take $K= \alpha R$ with $\alpha >1$ to ensure convergence of the series.
 
-Regrettably, the computational cost (measured by the number of calls to the Hamiltonian) of applying a Chebyshev polynomial expansion scales linearly with respect to both the timestep size and the spectral radius of $H$. We leave development of a propagator with an asymptotically decreasing computational cost per unit timestep to future work.
+Regrettably, the computational cost as measured by the number of calls to the Hamiltonian of applying a Chebyshev polynomial expansion scales linearly with respect to both the timestep size and the spectral radius of $H$. We remark however that the purpose of this work is to demonstrate a reduction in the number of timesteps, the development of a propagator with asymptotically decreasing computational cost per unit timestep is deferred to future work.
 
 \section{Numerical Results}
 
-We validate our approach on a finite square well potential
+The first validation of our approach is done on a finite square well potential.
+\begin{equation}
+V(x) = 2.8(x < L/16) + 2.8(x > L/16)
+\end{equation} 
+for $x \in  [-L/2, L/2]$ with $L=48$, and $M=25$. We discretize at $512$ points in space and compute the laplacian term in $H = \frac{-1}{2M}\triangle + V(x)$ using the FFT. Our initial wavefunction is taken as 
+\begin{equation}
+\psi(0) = e^{-(5(x-0.7))^2}
+\end{equation}
 
-\begin{eqnarray*}
-H &=& \frac{-1}{2M}\triangle + V(x) \\
-V(x) &=& 2.8(x < L/16) + 2.8(x > L/16) \\ 
-x &\in & [-L/2, L/2] \\
-L &=& 48\\
-M &=& 25\\
-Nx &=& 512 \\
-\Delta t &=& 0.5 \\
-T &=& 1941 \\
-\psi(0) &=& e^{-(5(x-0.7))^2}
-\end{eqnarray*}
 
-With a final time of 1941 (atomic units?) and $\Delta t = 0.5$ we get 3882 points in out time domain. We downsample by factors of 2,4,6 and 8 and record the relative error in  $\hat{\mathcal{P}}(\lambda)$.
+\begin{center}
+\begin{figure}
+\includegraphics[width=2.3in]{t1941.eps}
+\includegraphics[width=2.3in]{t1941_zoom.eps}
+\caption{Plot of $\hat{\mathcal{P}}(\lambda)$ constructed from the full data using an FFT in blue and the $l1$ reconstruction in red. The $l1$ reconstruction was done with 8x less points taken from $\mathcal{P}(t)$. Interestingly, the reconstructed data tends to favor a sparser solution and may in fact be closer to the ground truth.}
+\end{figure}
+\end{center}
 
+
+With a final time of $T=1941$ and the smallest $\Delta t = 0.5$ the time domain is divided into $3882$ points. We downsample this domain by factors of 2,4,6 and 8 and record the relative error in  $\hat{\mathcal{P}}(\lambda)$ as $\frac{||\hat{\mathcal{P}}_{l1}(\lambda) - \hat{\mathcal{P}}_{FFT}(\lambda)||_2}{||\hat{\mathcal{P}}_{FFT}(\lambda)||_2}$. Computation of the eigenvalues is done by locating the peaks using Matlab's \texttt{findpeaks}.
 
 \begin{center}
 \begin{tabular}{ l |c| r  }
   \hline                       
-  $\#$ subsampled timesteps & relative error &peak posistion error\\ \hline
+  $\#$ subsampled timesteps & relative error in $\hat{\mathcal{P}}(\lambda)$ & error in $\lambda_n$\\ \hline
    1941 & 2.7109e-4 & 0\\
    971 & .0062 & 0\\
    647 & .0138 & 0\\
@@ -207,26 +214,31 @@ With a final time of 1941 (atomic units?) and $\Delta t = 0.5$ we get 3882 point
 \end{tabular}
 \end{center}
 
-We run our experiment again on the double well potential originally studied by Feit \cite{FEIT1982}. We take $V(x) = k_0 - k_2x^2 + k_3x^3 + k_4x^4$ with $k_0=-132.707$, $k_2=7$, $k_3=0.5$, $k_4=1$, $x_1=3.813$, $x_2=-4.112$ and truncate the potential to be 0 outside of $[x1,x2]$. Our spatial discretization is $dx=0.0825$ across 512 points. We take our smallest allowable timestep as $dt=1.25$ towards a final time of $T=2560$. We randomly downsample the range by factors of 2 and 4 below.
+We run our experiment again on the double well potential originally studied by Feit \cite{FEIT1982}. We take $V(x) = k_0 - k_2x^2 + k_3x^3 + k_4x^4$ with $k_0=-132.707$, $k_2=7$, $k_3=0.5$, $k_4=1$, $x_1=3.813$, $x_2=-4.112$ and truncate the potential to be 0 outside of $[x1,x2]$. Our spatial discretization is $dx=0.0825$ across 512 points. We take our smallest allowable timestep as $\Delta t=1.25$ towards a final time of $T=2560$. We randomly downsample the range by factors of 2, 4 and 6 below.
 
 \begin{center}
 \begin{tabular}{ l | c | r  }
   \hline                       
-  $\#$ subsampled timesteps & relative error & peak posistion error\\ \hline
+  $\#$ subsampled timesteps & relative error in $\hat{\mathcal{P}}(\lambda)$ & error in $\lambda_n$\\ \hline
    2048 & 2.7109e-4 & 0\\
    1024 & .0062 & 0\\
    512 & .0138 & 0\\
+   256 & .0216 & 0\\
   \hline  
 \end{tabular}
 \end{center}
 
+\begin{center}
+\begin{figure}
+\includegraphics[width=3.5in]{doublewell.eps}
+\caption{Wavefunction evolution in the double well potential used by Feit Fleck and Steiger in the original implmentation of the spectral method. The potential is green, the probability density, $|\psi(x)|^2$, is black, the real and imaginary parts of $\psi$ are labeled red and blue.}
+\end{figure}
+\end{center}
 
-Here we plot $\hat{\mathcal{P}}(\lambda)$ constructed from the full data using an FFT in blue and the $l1$ reconstruction in red. Interestingly, the reconstructed data tends to favor a sparser solution and may in fact be closer to the ground truth.
+\section{Conclusions and future work}
+In this work we have developed and analyzed a novel spectral method for the computation of Hamiltonian eigenvalues which considerably reduces the number of timesteps required to accurately transform into the energy domain. Specifically, our work shows that the natural sparse structure present in quantum eigensystems may be exploited with $l1$ minimization allowing us to circumvent the small $\Delta t$ uncertainty principle.
 
-Here we plot $\hat{\mathcal{P}}(\lambda)$ constructed from the full data using an FFT in blue and the $l1$ reconstruction in red. Interestingly, the reconstructed data tends to favor a sparser solution and may in fact be closer to the ground truth.
-
-\includegraphics[width=3in]{t1941.eps}
-\includegraphics[width=3in]{t1941_zoom.eps}
+One drawback to our work is that existing spectrally accurate methods of approximation for $e^{-iH\Delta t}$ have a linearly scaling computational cost with regard to both $\Delta t$ and $\Delta E$. However, approximate methods (eg SOD, Strang splitting) show no increase in computation time with a large $\Delta t$ and we expect identification of quantum mechanical systems amenable to approximate methods will yield profitable numerical algorithms. Higher order approximate methods as well as hybrid approximate/spectral methods are also planned for the future.
 
 
 \bibliographystyle{plain}
