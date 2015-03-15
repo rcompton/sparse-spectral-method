@@ -1,0 +1,1 @@
+Subsample the time domain, use some weird random error bound, transfer domains via L1
